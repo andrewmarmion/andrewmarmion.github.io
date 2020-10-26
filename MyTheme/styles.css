@@ -102,6 +102,10 @@ a {
     margin-bottom: 0;
 }
 
+.item-list .text {
+    margin-bottom: 10px
+}
+
 .tag-list {
     margin-top: 15px;
 }
