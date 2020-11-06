@@ -1,4 +1,121 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Thu, 29 Oct 2020 16:43:38 +0000</lastBuildDate><pubDate>Thu, 29 Oct 2020 16:43:38 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Adding-a-CNAME-to-Publish</guid><title>Adding a CNAME to Publish</title><description>How to automatically add a CNAME file when you Publish your blog.</description><link>https://andrewmarmion.com/posts/Adding-a-CNAME-to-Publish</link><pubDate>Thu, 29 Oct 2020 12:04:00 +0000</pubDate><content:encoded><![CDATA[<h1>Adding a CNAME to Publish</h1><p>This blog is currently hosted on Github pages. The actual url is <a href="https://andrewmarmion.github.io">andrewmarmion.github.io</a>, however it is possible to use a custom domain, so the blog now uses the url <a href="https://andrewmarmion.com">andrewmarmion.com</a>, which the former automatically redirects to.</p><p>However, although Publish has the ability to publish straight to Github pages it caused me one infuriating problem. Everytime I published, my custom domain would be removed and I would have to re-add it.</p><p>I discovered that this is because the CNAME file added by Github is removed during <strong>publish deploy</strong>, and after some searching I found that there is a package called <a href="https://github.com/SwiftyGuerrero/CNAMEPublishPlugin">CNAMEPublishPlugin</a> that was able to solve my woes.<br><br>It is really easy to install and use. Add the package to your dependencies in your Package.swift</p><pre><code>dependencies: [
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Fri, 6 Nov 2020 14:17:01 +0000</lastBuildDate><pubDate>Fri, 6 Nov 2020 14:17:01 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Building-and-signing-an-iOS-app-with-Azure-DevOps</guid><title>Building and signing an iOS app using Azure DevOps</title><description>A quick start guide to building your iOS app on Azure Devops</description><link>https://andrewmarmion.com/posts/Building-and-signing-an-iOS-app-with-Azure-DevOps</link><pubDate>Fri, 6 Nov 2020 12:00:00 +0000</pubDate><content:encoded><![CDATA[<h1>Building and signing an iOS app using Azure DevOps</h1><p>Over the years I have used different CI/CD solutions: like Jenkins, Travis, Cricle CI and Bitrise (which is actually my favourite). One that I had not used before was Azue DevOps.</p><p>So I decided to give it a go.</p><p>I have a repo on my GitHub called FizzBuzz, the code for this project comes from a 2015 <a href="https://medium.com/@ynzc/getting-started-with-tdd-in-swift-2fab3e07204b">Medium article</a> by <a href="https://medium.com/@ynzc">Yvette</a> about TDD with Swift. I like using this project for testing CI/CD because it is a functioning app, it has unit tests and it has UI tests. Is it the best example of coding out there? No. But it serves me well for testing CI/CD.</p><h2>Getting Started</h2><p>It is really easy to get started with <a href="https://azure.microsoft.com/en-gb/services/devops/">Azure DevOps</a>. Just click the <strong>Start for free</strong> button.</p><p><a href="../../Images/AzureDevOps/azure-signup.png"><img src="../../Images/AzureDevOps/azure-signup.png" alt="Azure DevOps Signup" style="width:400px;" /></a></p><p>I signed up with an existing Microsoft account that I had, though I believe that you can sign in with your GitHub account and it will create an associated Microsoft account for you.</p><p>Once you are in you can create a new project and from there it is possible to add/clone a repo to it. I cloned my FizzBuzz repo and I was ready to get started.</p><h2>Creating a Pipeline</h2><p>My project doesn't have any dependencies such as CocoaPods or Carthage so I didn't need to worry about installing them. However, to create a signed build I did need to upload the <strong>p12</strong> and the <strong>provisioning profile</strong>.</p><p>Azure DevOps does have a secure area to store these. It took a bit to find where to store them but under the Pipelines section there is a Library, and inside there you can store your files in Secure Files.</p><br /><p><a href="../../Images/AzureDevOps/library.png"><img src="../../Images/AzureDevOps/library.png" alt="Where to store secure files" style="width:400px;" /></a></p><p>Once you have uploaded your files we can get started on creating our pipeline.</p><p>In the Pipeline section you should see a button for creating a new Pipeline. Clicking that takes you through a setup wizard that does the following:</p><h2>Where is the code?</h2><p>This is where your code is located. As I cloned my repo Azure I selected the first option.</p><p><a href="../../Images/AzureDevOps/where-is-your-code.png"><img src="../../Images/AzureDevOps/where-is-your-code.png" alt="Where is your code located" style="width:400px;" /></a></p><h2>Select your repo</h2><p>I only have the one repo in the project so it is fairly obvious which one to select.</p><p><a href="../../Images/AzureDevOps/select-your-repo.png"><img src="../../Images/AzureDevOps/select-your-repo.png" alt="Select your repo" style="width:400px;" /></a></p><h2>Configure</h2><p>There are three options to configure your pipeline.</p><ol><li>Xcode - this is a sample for Xcode build setup</li><li>Starter pipeline - this is a vary basic pipeline</li><li>Existing Azure Pipelines YAML file - this allows you to select an existing pipeline that you can then customize and build from.</li></ol><br /><p><a href="../../Images/AzureDevOps/configure-pipeline.png"><img src="../../Images/AzureDevOps/configure-pipeline.png" alt="Configure the pipeline" style="width:400px;" /></a></p><p>As this was my first pipeline I chose the first option.</p><h2>Review</h2><p>Once you have selected your Configure option you will be presented with a review screen.<br><br>This is the simple Xcode pipeline that it give:</p><p><a href="../../Images/AzureDevOps/review.png"><img src="../../Images/AzureDevOps/review.png" alt="Review the pipeline" style="width:400px;" /></a></p><br /><pre><code># <span class="type">Xcode</span>
+# <span class="type">Build</span>, test, and archive an <span class="type">Xcode</span> workspace on macOS.
+# <span class="type">Add</span> steps that install certificates, test, sign, and distribute an app, save build artifacts, and more:
+# https://docs.<span class="property">microsoft</span>.<span class="property">com</span>/azure/devops/pipelines/languages/xcode
+
+trigger:
+- master
+
+pool:
+  vmImage: 'macos-latest'
+
+steps:
+- task: <span class="type">Xcode@5</span>
+  inputs:
+    actions: 'build'
+    scheme: ''
+    sdk: 'iphoneos'
+    configuration: '<span class="type">Release</span>'
+    xcWorkspacePath: '**/*.xcodeproj/project.<span class="property">xcworkspace</span>'
+    xcodeVersion: '<span class="keyword">default</span>' # <span class="type">Options</span>: <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>, default, specifyPath
+    
+</code></pre><br /><p>So at this point you can either <strong>Save and run</strong> or just <strong>Save</strong> your pipeline.</p><h2>The pipeline</h2><p>Unfortunately this sample pipeline is not enough for us to create a proper build with a signed ipa.</p><p>However we can add some additional tasks to our yaml file so that we can get a signed build.</p><pre><code># <span class="type">Xcode</span>
+# <span class="type">Build</span>, test, and archive an <span class="type">Xcode</span> workspace on macOS.
+# <span class="type">Add</span> steps that install certificates, test, sign, and distribute an app, save build artifacts, and more:
+# https://docs.<span class="property">microsoft</span>.<span class="property">com</span>/azure/devops/pipelines/languages/xcode
+
+trigger:
+- master
+
+pool:
+  vmImage: 'macos-latest'
+
+steps:
+- task: <span class="type">InstallAppleCertificate@2</span>
+  displayName: '<span class="type">Install Certificates</span>'
+  inputs:
+    certSecureFile: '<span class="type">Certificates</span>.<span class="property">p12</span>'
+    certPwd: $(<span class="type">P12Password</span>)
+    keychain: 'temp'
+    deleteCert: <span class="keyword">true</span>  
+
+- task: <span class="type">InstallAppleProvisioningProfile@1</span>
+  displayName: '<span class="type">Install Provisioning Profiles</span>'
+  inputs:
+    provProfileSecureFile: '<span class="type">FizzBuzz</span>.<span class="property">mobileprovision</span>'
+    removeProfile: <span class="keyword">true</span>
+
+- task: <span class="type">Xcode@5</span>
+  displayName: '<span class="type">Xcode Build</span>'
+  inputs:
+    actions: 'build'
+    scheme: '<span class="type">FizzBuzz</span>'
+    sdk: 'iphoneos'
+    configuration: '<span class="type">Release</span>'
+    xcWorkspacePath: '**/*.xcodeproj/project.<span class="property">xcworkspace</span>'
+    xcodeVersion: '<span class="keyword">default</span>' 
+    packageApp: <span class="keyword">true</span>
+    signingOption: 'manual'
+    signingIdentity: '$(<span class="type">APPLE_CERTIFICATE_SIGNING_IDENTITY</span>)'
+    provisioningProfileUuid: '$(<span class="type">APPLE_PROV_PROFILE_UUID</span>)'
+
+- task: <span class="type">CopyFiles@2</span>
+  displayName: '<span class="type">Copy</span> files'
+  inputs:
+    contents: '**/*.ipa'
+    targetFolder: '$(build.<span class="property">artifactStagingDirectory</span>)'
+    overWrite: <span class="keyword">true</span>
+
+- task: <span class="type">PublishBuildArtifacts@1</span>
+  displayName: '<span class="type">Publish Artifacts</span>'
+  inputs:
+    pathtoPublish: '$(build.<span class="property">artifactStagingDirectory</span>)/output/$(sdk)/$(configuration)' 
+    artifactName: 'drop' 
+    publishLocation: '<span class="type">Container</span>'
+    
+</code></pre><br /><p>Comparing the sample yaml with our updated yaml we can see there are a few additional tasks that have been added, and we have added a few additional inputs to the</p><p>Tasks that we added:</p><ol><li>Install certificates and provisioning profiles<ol start="2"><li>Build with Xcode</li><li>Copy the ipa</li><li>Publish the artifacts</li></ol></li></ol><br /><h2>1. Installing Certificates and provisioning profiles</h2><p>Earlier on we uploaded our <strong>p12</strong> and our provisioning profile to the <strong>Secure Files</strong> area. This is where we access them.</p><p>So we need to make sure that the values that we enter for <strong>certSecureFile</strong> in the <a href="https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/utility/install-apple-certificate?view=azure-devops">InstallAppleCertificate@2</a> and the <strong>provProfileSecureFile</strong> in <a href="https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/utility/install-apple-provisioning-profile?view=azure-devops">InstallAppleProvisioningProfile@1</a> match exactly.</p><p>You'll notice that the <strong>InstallAppleCertificate@2</strong> has <strong>certPwd</strong> field. We are using a variable to store the <strong>$(P12Password)</strong> this can be added by clicking the <strong>Variable</strong> options on the right hand side of the screen, and selecting <strong>+</strong> to add the new variable. You <strong>do not</strong> want to store passwords directly in the yaml file, it is not a secure place for such things.</p><pre><code>- task: <span class="type">InstallAppleCertificate@2</span>
+  displayName: '<span class="type">Install Certificates</span>'
+  inputs:
+    certSecureFile: '<span class="type">Certificates</span>.<span class="property">p12</span>'
+    certPwd: $(<span class="type">P12Password</span>)
+    keychain: 'temp'
+    deleteCert: <span class="keyword">true</span>  
+
+- task: <span class="type">InstallAppleProvisioningProfile@1</span>
+  displayName: '<span class="type">Install Provisioning Profiles</span>'
+  inputs:
+    provProfileSecureFile: '<span class="type">FizzBuzz</span>.<span class="property">mobileprovision</span>'
+    removeProfile: <span class="keyword">true</span>
+    
+</code></pre><h2>2. Build with Xcode</h2><p>The <a href="https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/build/xcode?view=azure-devops">Xcode@5</a> task builds and signs our ipa.</p><p>We've explicity set the <strong>scheme</strong> as we may have multiple schemes in our project and this keeps it cleaner and easier to work with. But we have added the following:</p><ol><li><strong>packageApp</strong></li><li><strong>signingOption</strong></li><li><strong>signingIdentity</strong></li><li><strong>provisioningProfileUuid</strong></li></ol><br /><h3>packageApp</h3><br /><p>This tells the build task whether we want to create an ipa or not.</p><h3>signingOption</h3><br /><p>What type of signing we are using. Here we are using <strong>manual</strong>.</p><h3>signingIdentity</h3><br /><p>The value <strong>APPLE_CERTIFICATE_SIGNING_IDENTITY</strong> is captured when the we import the certificate in the step above.</p><h3>provisioningProfileUuid</h3><br /><p>The value <strong>APPLE_PROV_PROFILE_UUID</strong> is captured when we import the provisioning profile in the step above.</p><pre><code>- task: <span class="type">Xcode@5</span>
+  displayName: '<span class="type">Xcode Build</span>'
+  inputs:
+    actions: 'build'
+    scheme: '<span class="type">FizzBuzz</span>'
+    sdk: 'iphoneos'
+    configuration: '<span class="type">Release</span>'
+    xcWorkspacePath: '**/*.xcodeproj/project.<span class="property">xcworkspace</span>'
+    xcodeVersion: '<span class="keyword">default</span>' 
+    packageApp: <span class="keyword">true</span>
+    signingOption: 'manual'
+    signingIdentity: '$(<span class="type">APPLE_CERTIFICATE_SIGNING_IDENTITY</span>)'
+    provisioningProfileUuid: '$(<span class="type">APPLE_PROV_PROFILE_UUID</span>)'
+    
+</code></pre><h2>3. Copy the ipa</h2><p><a href="https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/utility/copy-files?view=azure-devops&tabs=yaml">CopyFiles@2</a> copies our built and signed ipa to our target folder. The <strong>overWrite</strong> option just means that it will overwrite the files that we are copying if they already exist. It's not 100% important to have in such a small job as this but it may be important to turn this feature on or off depending on your set up.</p><pre><code>- task: <span class="type">CopyFiles@2</span>
+  displayName: '<span class="type">Copy</span> files'
+  inputs:
+    contents: '**/*.ipa'
+    targetFolder: '$(build.<span class="property">artifactStagingDirectory</span>)'
+    overWrite: <span class="keyword">true</span>
+    
+</code></pre><h2>4. Publish the artifacts</h2><p>Once we have copied the files we need to publish them using <a href="https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/utility/publish-build-artifacts?view=azure-devops">PublishBuildArtifacts@1</a></p><pre><code>- task: <span class="type">PublishBuildArtifacts@1</span>
+  displayName: '<span class="type">Publish Artifacts</span>'
+  inputs:
+    pathtoPublish: '$(build.<span class="property">artifactStagingDirectory</span>)/output/$(sdk)/$(configuration)' 
+    artifactName: 'drop' 
+    publishLocation: '<span class="type">Container</span>'
+    
+</code></pre><h2>Let's build the app.</h2><p>Now that we have updated the pipeline yaml we can build the app.</p><p>So on your pipelines page you can run the pipeline by right clicking the 3 dots on the right hand side and selecting <strong>Run pipeline</strong>. It's that easy. FYI the dots are hidden until you hover over them with your mouse.</p><p><a href="../../Images/AzureDevOps/run-pipeline.png"><img src="../../Images/AzureDevOps/run-pipeline.png" alt="Run the pipeline" style="width:400px;" /></a></p><p>Once you select the branch you want to build from you can then watch your build in real time.</p><br /><p><a href="../../Images/AzureDevOps/build-inprogress.png"><img src="../../Images/AzureDevOps/build-inprogress.png" alt="The build in progress" style="width:400px;" /></a></p><p>Once your pipepline has completed you can review it by selecting <strong>Pipelines</strong> from the left menu and then <strong>Runs</strong> from the tab at the top.</p><p><a href="../../Images/AzureDevOps/runs.png"><img src="../../Images/AzureDevOps/runs.png" alt="Pipeline runs" style="width:400px;" /></a></p><p>Clicking on an individual run we can see more details about it. If you have published any artifacts they will be listed under the <em>Published</em> section on this page. You can click through and download that signed ipa that you have just built. 🎉</p><p><a href="../../Images/AzureDevOps/individual-run.png"><img src="../../Images/AzureDevOps/individual-run.png" alt="Pipeline runs" style="width:400px;" /></a></p><h2>Where next?</h2><p>There are lots that can be done on Azure DevOps and I have just scratched the surface. One thing I would like to look into is deploying the app to App Center, so that it would allow for easy distribution of the app. Another would be capturing the dsyms that have been created and passing them to Apple or Firebase Crashlytics.</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Adding-a-CNAME-to-Publish</guid><title>Adding a CNAME to Publish</title><description>How to automatically add a CNAME file when you Publish your blog.</description><link>https://andrewmarmion.com/posts/Adding-a-CNAME-to-Publish</link><pubDate>Thu, 29 Oct 2020 12:04:00 +0000</pubDate><content:encoded><![CDATA[<h1>Adding a CNAME to Publish</h1><p>This blog is currently hosted on Github pages. The actual url is <a href="https://andrewmarmion.github.io">andrewmarmion.github.io</a>, however it is possible to use a custom domain, so the blog now uses the url <a href="https://andrewmarmion.com">andrewmarmion.com</a>, which the former automatically redirects to.</p><p>However, although Publish has the ability to publish straight to Github pages it caused me one infuriating problem. Everytime I published, my custom domain would be removed and I would have to re-add it.</p><p>I discovered that this is because the CNAME file added by Github is removed during <strong>publish deploy</strong>, and after some searching I found that there is a package called <a href="https://github.com/SwiftyGuerrero/CNAMEPublishPlugin">CNAMEPublishPlugin</a> that was able to solve my woes.<br><br>It is really easy to install and use. Add the package to your dependencies in your Package.swift</p><pre><code>dependencies: [
    ...
     .<span class="call">package</span>(name: <span class="string">"CNAMEPublishPlugin"</span>, url: <span class="string">"https://github.com/SwiftyGuerrero/CNAMEPublishPlugin"</span>, from: <span class="string">"0.1.0"</span>)
 ],
