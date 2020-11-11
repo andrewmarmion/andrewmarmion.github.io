@@ -1,4 +1,147 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Sun, 8 Nov 2020 22:32:05 +0000</lastBuildDate><pubDate>Sun, 8 Nov 2020 22:32:05 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Updating-a-widget-using-AppStorage</guid><title>Updating a Widget using AppStorage</title><description>How to update a SwiftUI Widget when AppStorage updates</description><link>https://andrewmarmion.com/posts/Updating-a-widget-using-AppStorage</link><pubDate>Sat, 7 Nov 2020 12:04:00 +0000</pubDate><content:encoded><![CDATA[<h1>Updating a Widget using AppStorage</h1><p>One of the new features in iOS 14 is Widgets. These are great and much has been said about them. But one problem that people always seem to struggle with is how to get data from your App into your Widget.</p><p>Well the simplest answer is to use an AppGroup.</p><p>An AppGroup allows the sharing of data between all apps and extensions that have the capability of that AppGroup.</p><p>It is really easy to set up an AppGroup. In each target that you want to share data you add the AppGroup capability. Once this has resolved it should have a name like: <strong>"group.com.my.app.identifier"</strong></p><p>So when dealing with Widgets, you will need to set up an AppGroup in both the App's and the Widget Extension's target, using the same identifier. This now means that they can share the same file system, user defaults, etc.</p><h2>AppStorage</h2><p>AppStorage is just a property wrapper for UserDefaults. The following comes from my <a href="https://stackoverflow.com/a/62602643/5508175">answer</a> about AppStorage on Stackoverflow.<br><br>Looking at the <a href="https://developer.apple.com/documentation/swiftui/appstorage">documentation</a> for <code>@AppStorage</code> the only values that you can currently store using this property wrapper are:</p><ul><li><code>Int</code><ul><li><code>Double</code></li><li><code>String</code></li><li><code>Bool</code></li><li><code>URL</code></li><li><code>Data</code></li></ul></li></ul><br /><p>And their optional counterparts. You can also store values that conform to <code>RawRepresentable</code>, like enums that conform to <code>Int</code> or <code>String</code>.</p><p>If you want to store a dictionary using this method then you would have to convert it to data and store it that way.</p><pre><code><span class="keyword">@AppStorage</span>(<span class="string">"ratings"</span>)
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Wed, 11 Nov 2020 13:17:11 +0000</lastBuildDate><pubDate>Wed, 11 Nov 2020 13:17:11 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Display-alerts-sheets-and-actionsheets-in-swiftui</guid><title>Alerts, Sheets, and ActionSheets in SwiftUI</title><description>How to show multiple Alerts, Sheets or ActionSheets in SwiftUI</description><link>https://andrewmarmion.com/posts/Display-alerts-sheets-and-actionsheets-in-swiftui</link><pubDate>Wed, 11 Nov 2020 12:04:00 +0000</pubDate><content:encoded><![CDATA[<h1>Alerts, Sheets, and ActionSheets in SwiftUI</h1><p>This post is a re-write of an <a href="https://stackoverflow.com/a/58738292/5508175">answer</a> I gave on Stackoverflow.</p><hr><br /><p>To display an alert, sheet, or actionsheet in SwiftUI all follow a similar process.</p><h2>A single Alert</h2><p>Here is a simple example showing a simple single button Alert.</p><pre><code><span class="keyword">struct</span> ContentView:<span class="type">View</span> {
+
+    <span class="keyword">@State private var</span> showAlert: <span class="type">Bool</span> = <span class="keyword">false
+
+    var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">Button</span>(action: {
+            <span class="keyword">self</span>.<span class="property">showAlert</span> = <span class="keyword">true</span>
+
+        }, label: {
+            <span class="type">Text</span>(<span class="string">"Show alert"</span>)
+        })
+        .<span class="call">alert</span>(isPresented: $showAlert)  {
+            <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert"</span>),
+                  message: <span class="type">Text</span>(<span class="string">"You have shown an alert"</span>),
+                  dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+        }
+    }
+}
+
+</code></pre><br /><p>To show an Alert we need a variable, <code>showAlert</code>, to track whether the Alert is showing or not. However, as we are mutating the value of this variable it will need to be an <code>@State</code> variable. We give this an initial value of <code>false</code>.</p><p>We then have a Button whose action sets the value of <code>showAlert</code> to true.</p><p>Finally we need to setup the Alert. We do this by using the <code>.alert(isPresented:content:)</code> modifier. It takes a binding of Binding&lt;Bool&gt; and a content returns an Alert.</p><h2>Two Alerts</h2><p>So what if we wanted to have two Alerts on the screen? Well it is isn't too complicated but there is a gotcha, let's start with something that we think should work but doesn't.</p><pre><code><span class="keyword">struct</span> ContentView:<span class="type">View</span> {
+
+    <span class="keyword">@State private var</span> showAlertOne: <span class="type">Bool</span> = <span class="keyword">false
+    @State private var</span> showAlertTwo: <span class="type">Bool</span> = <span class="keyword">false
+
+    var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">20</span>) {
+            <span class="type">Button</span>(action: {
+                <span class="keyword">self</span>.<span class="property">showAlertOne</span> = <span class="keyword">true</span>
+
+            }, label: {
+                <span class="type">Text</span>(<span class="string">"Show first alert"</span>)
+            })
+
+            <span class="type">Button</span>(action: {
+                <span class="keyword">self</span>.<span class="property">showAlertTwo</span> = <span class="keyword">true</span>
+
+            }, label: {
+                <span class="type">Text</span>(<span class="string">"Show second alert"</span>)
+            })
+        }
+        .<span class="call">alert</span>(isPresented: $showAlertOne) {
+            <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert One"</span>),
+                  message: <span class="type">Text</span>(<span class="string">"You have shown Alert One"</span>),
+                  dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+        }
+        .<span class="call">alert</span>(isPresented: $showAlertTwo) {
+            <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert Two"</span>),
+                  message: <span class="type">Text</span>(<span class="string">"You have shown Alert Two"</span>),
+                  dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+        }
+
+    }
+}
+
+</code></pre><p>So we setup our ContentView in a similar way as before, we add an additional <code>@State</code> variable to control the second Alert. We add the <code>.alert(isPresented:content:)</code> modifier. And we should be good to go.</p><p>Running this code, produces an unexpected result. The first Alert is never presented. We can only present the second. So what is causing this?</p><p>Due to the way SwiftUI constructs its views, we can only have one Alert on an individual view. We can get around this issue by changing how we add the <code>.alert(isPresenting:content:)</code> modifiers. As long as we don't <strong>chain</strong> the Alerts they should function as expected.</p><pre><code><span class="keyword">struct</span> ContentView:<span class="type">View</span> {
+
+    <span class="keyword">@State private var</span> showAlertOne: <span class="type">Bool</span> = <span class="keyword">false
+    @State private var</span> showAlertTwo: <span class="type">Bool</span> = <span class="keyword">false
+
+    var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">20</span>) {
+            <span class="type">Button</span>(action: {
+                <span class="keyword">self</span>.<span class="property">showAlertOne</span> = <span class="keyword">true</span>
+
+            }, label: {
+                <span class="type">Text</span>(<span class="string">"Show first alert"</span>)
+            })
+            .<span class="call">alert</span>(isPresented: $showAlertOne) {
+                <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert One"</span>),
+                      message: <span class="type">Text</span>(<span class="string">"You have shown Alert One"</span>),
+                      dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+            }
+
+            <span class="type">Button</span>(action: {
+                <span class="keyword">self</span>.<span class="property">showAlertTwo</span> = <span class="keyword">true</span>
+
+            }, label: {
+                <span class="type">Text</span>(<span class="string">"Show second alert"</span>)
+            })
+            .<span class="call">alert</span>(isPresented: $showAlertTwo) {
+                <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert Two"</span>),
+                      message: <span class="type">Text</span>(<span class="string">"You have shown Alert Two"</span>),
+                      dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+            }
+        }
+    }
+}
+
+</code></pre><p>Note we have added the <code>.alert(isPresented:content:)</code> modifiers to each button. This stops the Alerts from being chained and allows them to present as expected.</p><p>This starts to get more complicated if we add more Alerts. What if we have 6 or 7 different Alerts we could present? What if the View is so simple that we have no choice but to chain the Alerts? This isn't ideal and it would mean that our Alerts are spread all over our view (adding complexity) or we are unable to add the Alerts that we want.</p><h2>Handling multiple Alerts.</h2><p>There is actually another modifier that allows us to show and Alert <code>.alert(item:content:)</code>. This takes an item that is a Binding&lt;Identifiable&gt; and a closure that takes an Identifiable that that returns an Alert.</p><p>So how can we use this to make our Alerts? Well the first thing that we need to do is create something that conforms to Identifiable. We are going to use an enum that has an associated value and conforms to Identifiable. The <code>id</code> property, that is required to make the enum Identifiable, is a computed property that returns the rawValue of the enum (hence why we need the enum to have an associated value).</p><pre><code><span class="keyword">enum</span> Choice: <span class="type">Int</span>, <span class="type">Identifiable</span> { 
+    <span class="keyword">var</span> id: <span class="type">Int</span> {
+        rawValue
+    }
+
+    <span class="keyword">case</span> first, second
+}
+
+</code></pre><p>So let's look at how it all fits together.</p><pre><code><span class="keyword">struct</span> ContentView:<span class="type">View</span> {
+
+    <span class="keyword">@State private var</span> showAlert: <span class="type">Choice</span>? <span class="comment">// init this as nil</span>
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">20</span>) {
+            <span class="type">Button</span>(action: {
+                <span class="keyword">self</span>.<span class="property">showAlert</span> = .<span class="dotAccess">first</span>
+
+            }, label: {
+                <span class="type">Text</span>(<span class="string">"Show first alert"</span>)
+            })
+
+            <span class="type">Button</span>(action: {
+                <span class="keyword">self</span>.<span class="property">showAlert</span> = .<span class="dotAccess">second</span>
+
+            }, label: {
+                <span class="type">Text</span>(<span class="string">"Show second alert"</span>)
+            })
+        }
+        .<span class="call">alert</span>(item: $showAlert) { choice -&gt; <span class="type">Alert</span> <span class="keyword">in
+
+            switch</span> choice {
+                <span class="keyword">case</span> .<span class="dotAccess">first</span>:
+                    <span class="keyword">return</span> <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert One"</span>),
+                                 message: <span class="type">Text</span>(<span class="string">"You have shown Alert One"</span>),
+                                 dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+
+                <span class="keyword">case</span> .<span class="dotAccess">second</span>:
+                    <span class="keyword">return</span> <span class="type">Alert</span>(title: <span class="type">Text</span>(<span class="string">"Alert Two"</span>),
+                                 message: <span class="type">Text</span>(<span class="string">"You have shown Alert Two"</span>),
+                                 dismissButton: .<span class="call">default</span>(<span class="type">Text</span>(<span class="string">"OK"</span>)))
+            }
+        }
+    }
+}
+
+</code></pre><p>We have removed the multiple <code>@State</code> variables for each Alert and replaced them with one that uses our enum. To guarantee that we don't show an Alert we set this to nil. When our Alert is dismissed it will reset it back to nil.</p><p>We have updated the actions inside each Button. Instead of setting the values to true we set them to the enum case that relates to the Alert that we want to show.</p><p>Finally we have used the <code>.alert(item:content:)</code> modifier. We use a switch statement to select the Alert that we want to show, depending on the choice we have made.</p><p>This makes it much cleaner for showing our Alerts as they can be stored in one place and we can easily extend this to have as many Alerts as we want, just increase the number of cases that we have in our enum.</p><h2>Sheets and ActionSheets</h2><p>Sheets and ActionSheets are very similar to Alerts in how they are presented. There are four ways to present Sheets.</p><p>These two require a Bool binding:</p><pre><code>.<span class="call">sheet</span>(isPresented: <span class="type">Binding</span>&lt;<span class="type">Bool</span>&gt;, content: () -&gt; <span class="type">View</span>)
+.<span class="call">sheet</span>(isPresented: <span class="type">Binding</span>&lt;<span class="type">Bool</span>&gt;, onDismiss: (() -&gt; <span class="type">Void</span>)?, content: () -&gt; <span class="type">Void</span>)
+
+</code></pre><p>These two require an Identifiable binding:</p><pre><code>.<span class="call">sheet</span>(item: <span class="type">Binding</span>&lt;<span class="type">Identifiable</span>?&gt;, content: (<span class="type">Identifiable</span>) -&gt; <span class="type">View</span>)
+.<span class="call">sheet</span>(item: <span class="type">Binding</span>&lt;<span class="type">Identifiable</span>?&gt;, onDismiss: (() -&gt; <span class="type">Void</span>)?, content: (<span class="type">Identifiable</span>) -&gt; <span class="type">View</span>)
+
+</code></pre><br /><p>For ActionSheets there are two ways, like Alerts.</p><p>With the Bool binding:</p><pre><code>.<span class="call">actionSheet</span>(isPresented: <span class="type">Binding</span>&lt;<span class="type">Bool</span>&gt;, content: () -&gt; <span class="type">ActionSheet</span>)
+
+</code></pre><p>With the Identifiable binding:</p><pre><code>.<span class="call">actionSheet</span>(item: <span class="type">Binding</span>&lt;<span class="type">Identifiable</span>?&gt;, content: (<span class="type">Identifiable</span>) -&gt; <span class="type">ActionSheet</span>)
+
+</code></pre><h2>Which binding should I use?</h2><h2>Binding&lt;Bool&gt;</h2><p>If you only need to show one type of Alert, Sheet or ActionSheet then use the Bool binding, it saves you having to write some extra lines of code.</p><h2>Binding&lt;Identifiable&gt;</h2><p>If you many different types of Alerts, Sheets or ActionSheets to show then choose the Identifiable binding as it makes it much easier to manage.</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Updating-a-widget-using-AppStorage</guid><title>Updating a Widget using AppStorage</title><description>How to update a SwiftUI Widget when AppStorage updates</description><link>https://andrewmarmion.com/posts/Updating-a-widget-using-AppStorage</link><pubDate>Sat, 7 Nov 2020 12:04:00 +0000</pubDate><content:encoded><![CDATA[<h1>Updating a Widget using AppStorage</h1><p>One of the new features in iOS 14 is Widgets. These are great and much has been said about them. But one problem that people always seem to struggle with is how to get data from your App into your Widget.</p><p>Well the simplest answer is to use an AppGroup.</p><p>An AppGroup allows the sharing of data between all apps and extensions that have the capability of that AppGroup.</p><p>It is really easy to set up an AppGroup. In each target that you want to share data you add the AppGroup capability. Once this has resolved it should have a name like: <strong>"group.com.my.app.identifier"</strong></p><p>So when dealing with Widgets, you will need to set up an AppGroup in both the App's and the Widget Extension's target, using the same identifier. This now means that they can share the same file system, user defaults, etc.</p><h2>AppStorage</h2><p>AppStorage is just a property wrapper for UserDefaults. The following comes from my <a href="https://stackoverflow.com/a/62602643/5508175">answer</a> about AppStorage on Stackoverflow.<br><br>Looking at the <a href="https://developer.apple.com/documentation/swiftui/appstorage">documentation</a> for <code>@AppStorage</code> the only values that you can currently store using this property wrapper are:</p><ul><li><code>Int</code><ul><li><code>Double</code></li><li><code>String</code></li><li><code>Bool</code></li><li><code>URL</code></li><li><code>Data</code></li></ul></li></ul><br /><p>And their optional counterparts. You can also store values that conform to <code>RawRepresentable</code>, like enums that conform to <code>Int</code> or <code>String</code>.</p><p>If you want to store a dictionary using this method then you would have to convert it to data and store it that way.</p><pre><code><span class="keyword">@AppStorage</span>(<span class="string">"ratings"</span>)
 <span class="keyword">var</span> ratings: <span class="type">Data</span> = <span class="type">Data</span>() <span class="comment">// we need to initialize it with something</span>
 
 </code></pre><br /><p>Then we can save to it using</p><pre><code><span class="keyword">let</span> data = [<span class="string">"Hello"</span>: <span class="number">5.0</span>]
