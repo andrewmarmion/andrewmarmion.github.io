@@ -161,7 +161,17 @@ ol {
     padding-left: 30px
 }
 
-
+/*
+ * This sets the color and style of code in back tics
+ */
+article p code, article li code, .discover .content code {
+    background-color: #e2e2e2;
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 1.3em;
+    margin: 1px;
+}
 
 @media (prefers-color-scheme: dark) {
     body {
@@ -183,6 +193,10 @@ ol {
 
     header {
         background-color: #000;
+    }
+
+    article p code, article li code, .discover .content code, .related-content, .podcast .audio-box {
+        background-color: #171717;
     }
 }
 
@@ -215,7 +229,7 @@ pre code {
 
     display: block;
 
-    padding: 0 20px;
+    padding: 15px 20px;
 
     color: #a9bcbc;
 
@@ -228,6 +242,13 @@ pre code {
     white-space: pre;
 
     -webkit-overflow-scrolling: touch;
+
+    border: 1px solid #666;
+
+    border-radius: 12px;
+
+/*    background-color: #1a1a1a;*/
+background-color: #171717;
 
 }
 
@@ -285,6 +306,21 @@ pre code .preprocessing {
     color: #b68a00;
 
 }
+
+pre code .highlight {
+    display: inline-block;
+    padding: 0 4px 2px 4px;
+    border: 1px solid #546AFF;
+    border-radius: 5px;
+    background-color: #1A1721;
+    margin-left: -5px;
+}
+
+pre code .highlight.shifted {
+    margin-left: 0;
+}
+
+
 
 /*
  * Tag Colors
