@@ -161,6 +161,20 @@ ol {
     padding-left: 30px
 }
 
+article .title {
+    font-size: 2em;
+    padding-bottom: 0px;
+}
+
+article .published {
+    padding-top: 20px;
+    padding-bottom: 20 px;
+}
+
+article .lineBreak {
+    padding-bottom: 20px;
+}
+
 /*
  * This sets the color and style of code in back tics
  */
@@ -247,9 +261,7 @@ pre code {
 
     border-radius: 12px;
 
-/*    background-color: #1a1a1a;*/
-background-color: #171717;
-
+    background-color: #1a1a1a;
 }
 
 
