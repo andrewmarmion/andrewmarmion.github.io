@@ -15,7 +15,7 @@ body {
 }
 
 .wrapper {
-    max-width: 900px;
+    max-width: 1000px;
     margin-left: auto;
     margin-right: auto;
     padding: 40px;
@@ -214,7 +214,7 @@ article p code, article li code, .discover .content code {
     }
 }
 
-@media(max-width: 600px) {
+@media(max-width: 800px) {
     .wrapper {
         padding: 40px 20px;
     }
