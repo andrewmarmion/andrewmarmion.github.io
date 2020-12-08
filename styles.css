@@ -14,6 +14,8 @@ body {
     font-size: 1.05em;
 }
 
+
+
 .wrapper {
     max-width: 1000px;
     margin-left: auto;
@@ -65,6 +67,10 @@ nav li a.selected {
 h1 {
     margin-bottom: 20px;
     font-size: 2em;
+}
+
+.about {
+    font-size: 4em;
 }
 
 h2 {
@@ -187,6 +193,22 @@ article p code, article li code, .discover .content code {
     margin: 1px;
 }
 
+.appIcon {
+    width: 60px;
+    height: 60px;
+    margin-left: 5px;
+    margin-right: 5px;
+    border-radius: 17.544%;
+    box-shadow: 0 0.1125em 0.1em rgba(0, 0, 0, 0.25);
+}
+
+/*.appIcon:Hover {*/
+/*    width: 70px;*/
+/*    height: 70px;*/
+/*}*/
+
+
+
 @media (prefers-color-scheme: dark) {
     body {
         background-color: #222;
@@ -212,6 +234,11 @@ article p code, article li code, .discover .content code {
     article p code, article li code, .discover .content code, .related-content, .podcast .audio-box {
         background-color: #171717;
     }
+
+    .appIcon {
+        box-shadow: 0 0.1125em 0.1em rgba(255, 255, 255, 0.25);
+    }
+
 }
 
 @media(max-width: 800px) {
@@ -219,6 +246,8 @@ article p code, article li code, .discover .content code {
         padding: 40px 20px;
     }
 }
+
+
 
 /*
  * Font Awesome
