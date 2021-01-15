@@ -1,4 +1,78 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Wed, 6 Jan 2021 17:36:12 +0000</lastBuildDate><pubDate>Wed, 6 Jan 2021 17:36:12 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Basic-Core-Data</guid><title>Basic Core Data</title><description>Adding Core Data to an iOS app</description><link>https://andrewmarmion.com/posts/Basic-Core-Data</link><pubDate>Wed, 6 Jan 2021 17:28:00 +0000</pubDate><content:encoded><![CDATA[<p>One thing that many developers struggle with when starting out is getting their head around Core Data. It is not as intuitive as it could be and there are lots of pitfalls that you can unstick you. I am going to do a series of posts about Core Data.</p><p>So let's dive in.</p><p>Firstly you can allow Xcode to setup Core Data for you. This is a double edged sword. It is bad because it hides a lot of the complexity from you making it hard to understand what is happening but it is also good because it hides a lot of the complexity from you allowing you to get started quickly.</p><p>We aren't going to let Xcode do all the work for us, but we will let it handle our managed objects. So let's begin by creating a new iOS app and selecting SwiftUI.</p><br /><a href="https://i.imgur.com/HyOSUZX.png">
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Fri, 15 Jan 2021 15:25:51 +0000</lastBuildDate><pubDate>Fri, 15 Jan 2021 15:25:51 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Dynamically-updating-your-Info-plist</guid><title>Dynamically updating your Info.plist</title><description>How to add properties to your Info.plist during a build phase using PlistBuddy.</description><link>https://andrewmarmion.com/posts/Dynamically-updating-your-Info-plist</link><pubDate>Fri, 15 Jan 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>One of the many things that I have had to do as an iOS developer is to update the Info.plist. This is fairly straight forward to do and it can be done inside of Xcode. A lesser known technique is that it can be done via the terminal using PlistBuddy.</p><p>Doing it via the terminal has several advantages over editing it via Xcode. Firstly you may wish to dynamically add values to your plist that update frequently (for example the latest commit hash). You could keep updating a User-Defined value in the build settings but this could get tedious and you are liable to forget to do it. It is much better to automate the process. Another reason is that you might want to dynamically add a value to the plist, for example you want to add <code>UIFileSharingEnabled</code> for certain configurations but not for others. As far as I can tell you cannot add a User-Defined value for these, so it leaves us at a deadend - or does it?</p><p>You can add and set values in your plist using <code>PlistBuddy</code>. It is fairly straight forward to use but there are some gotchas that I will point out along the way.</p><p>The basic format of a command for <code>PlistBuddy</code> is as follows:</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '&lt;command&gt; :&lt;key&gt; &lt;type&gt; &lt;value&gt;' &lt;file_name&gt;
+
+</code></pre><br /><h3>Common commands</h3><ul><li>Add</li><li>Set</li><li>Delete</li></ul><br /><h3>Common types</h3><ul><li>string</li><li>array</li><li>dict</li><li>bool</li><li>real</li><li>integer</li><li>date</li><li>data</li></ul><br /><p>So if we wanted to add a key to your plist (this incidentally will also create the plist if it doesn't exist) we could do the following:</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Add</span> :<span class="type">UIFileSharingEnabled</span> bool <span class="type">YES</span>' <span class="type">Info</span>.<span class="property">plist</span>
+
+</code></pre><br /><p>This adds the UIFileSharingEnabled key with a boolean value of YES (true) to the plist.</p><p>If we were to run this command again it will tell us the following:</p><p><code>Add: ":UIFileSharingEnabled" Entry Already Exists</code>.<br><br>This results in a non-zero exit. Which is not ideal.</p><p>So if the key already exists in the plist you should not run the Add command, you should run the Set command.</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Set</span> :<span class="type">UIFileSharingEnabled</span> bool <span class="type">YES</span>' <span class="type">Info</span>.<span class="property">plist</span>
+
+</code></pre><br /><p>And if you want to delete a key from the plist then, surprisingly enough, you should use the Delete command. Note we don't need to pass the <code>type</code> or <code>value</code> when we delete an entry.</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Delete</span> :<span class="type">UIFileSharingEnabled</span>' <span class="type">Info</span>.<span class="property">plist</span>
+
+</code></pre><br /><p>So recently I was asked to enable <code>UIFileSharingEnabled</code> and <code>LSSupportsOpeningDocumentsInPlace</code> on the development and test builds for an internal app that we manage.</p><p>One of the requirements was that we didn't want to have the values permanently stored in the plist. This gave a couple of options: dynamically add the entries at build time and then remove them in a post build action (this is do able but it does mean that you are having to perform actions in multiple locations so it is not ideal). The other way was to edit the Info.plist once it had been copied to the build directory but before the app is signed. This would mean that there is no teardown required after the plist was updated so there is only one location that holds the code and needs to be maintained.</p><p>So I wrote the following bash script that resides in the build phases on my xcproject as a run-script. At a high-level it does the following. It switches on the configuration, constructs the location of the plist, loops of the different keys that we wish to add, checks if the key exists, adds or sets the key accordingly.</p><pre><code><span class="keyword">case</span> <span class="string">"${CONFIGURATION}"</span> <span class="keyword">in</span>
+
+<span class="string">"dev"</span> | <span class="string">"uat"</span> )
+
+info_plist=<span class="string">"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/Info.plist"</span>
+
+echo <span class="string">"Enabling iTunes file sharing.."</span>
+
+<span class="keyword">for</span> item <span class="keyword">in</span> <span class="string">"UIFileSharingEnabled" "LSSupportsOpeningDocumentsInPlace"</span>;
+    <span class="keyword">do</span>
+        # <span class="type">Check</span> to see <span class="keyword">if</span> the value exists <span class="keyword">in</span> the plist
+        val=$(/usr/libexec/<span class="type">PlistBuddy</span> -c 'print <span class="string">":"</span>'${item}'<span class="string">""</span>' <span class="string">"${info_plist}"</span> <span class="number">2</span>&gt;/dev/null);
+        
+        # <span class="type">Capture</span> exit code
+        exitCode=$? 
+
+        <span class="keyword">if</span> [ $exitCode == <span class="number">0</span> ] 
+            then
+            echo <span class="string">"Setting key $item to YES"</span>
+            /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Set</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
+
+            <span class="keyword">else</span>
+            echo <span class="string">"Adding key $item as YES"</span>
+            /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Add</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
+        fi
+    done
+;;
+
+
+*)
+;;
+esac
+</code></pre><br /><p>Let's go through it in more detail.</p><pre><code><span class="keyword">case</span> <span class="string">"${CONFIGURATION}"</span> <span class="keyword">in</span>
+
+<span class="string">"dev"</span> | <span class="string">"uat"</span> )
+    # perform <span class="keyword">some</span> action here
+;;
+
+
+*)
+;;
+esac
+</code></pre><br /><p>This is bascially a switch statement that switches over the current configuration that is being built. I am only interested in this code running when it is for <code>dev</code> and <code>uat</code> so that is what this handles. The <code>*</code> handles the default value of the switch, where we do nothing.</p><br /><pre><code>info_plist=<span class="string">"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/Info.plist"</span>
+
+echo <span class="string">"Enabling iTunes file sharing.."</span>
+</code></pre><br /><p>This constructs the path of the built Info.plist and stores it as a variable <code>info_plist</code>. We then bring to the log using the <code>echo</code> command.</p><br /><pre><code><span class="keyword">for</span> item <span class="keyword">in</span> <span class="string">"UIFileSharingEnabled" "LSSupportsOpeningDocumentsInPlace"</span>;
+    <span class="keyword">do</span>
+        # <span class="keyword">do</span> something here with the item
+    done
+;;
+</code></pre><br /><p>This is a for-loop that allows us to loop over the strings that we have, and then execute any code for each item.</p><br /><pre><code># <span class="type">Check</span> to see <span class="keyword">if</span> the value exists <span class="keyword">in</span> the plist
+val=$(/usr/libexec/<span class="type">PlistBuddy</span> -c 'print <span class="string">":"</span>'${item}'<span class="string">""</span>' <span class="string">"${info_plist}"</span> <span class="number">2</span>&gt;/dev/null);
+
+# <span class="type">Capture</span> exit code
+exitCode=$? 
+</code></pre><br /><p>This code check to see if the looped item is included in the the plist. If we try to add an item to the plist when it already exists we get a non-zero exit code. Similarly when we try to set an item that doesn't exist then we get a non-zero exit code. We may in the future add the values permanently to the plist so we need to check if they exist and then handle it appropriately.</p><p>We also capture the exit code so that we can check if it is zero or not (it will be zero in the case that the key exists in the plist).</p><pre><code><span class="keyword">if</span> [ $exitCode == <span class="number">0</span> ] 
+    then
+    echo <span class="string">"Setting key $item to YES"</span>
+    /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Set</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
+
+    <span class="keyword">else</span>
+    echo <span class="string">"Adding key $item as YES"</span>
+    /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Add</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
+fi
+</code></pre><br /><p>Finally we can check if the exit code is zero or not and perform the appropriate action.</p><p>So we are pretty much done. However there is one issue left to resolve. If we add this script as a build phase it will be executed before the Info.plist is copied across and our changes will be lost. 😢</p><p>So to fix this we need to make the script depend upon the existence of the Info.plist, we can do this by adding the following to the required Input files<br><br><code>$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_FOLDER_PATH)/Info.plist</code></p><p>For good measure I also uncheck <code>Based on dependency analysis</code> which will make this script run for all incremental builds.</p><p>Your build phase should now look something like this*:</p><a href="https://imgur.com/z6P4CVa.jpg">
+<img src="https://i.imgur.com/z6P4CVa.jpg" style="width:600px;" />
+</a><p>*unfortunately my screen isn't big enough to show all the code but you can see the main points that are required.</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Basic-Core-Data</guid><title>Basic Core Data</title><description>Adding Core Data to an iOS app</description><link>https://andrewmarmion.com/posts/Basic-Core-Data</link><pubDate>Wed, 6 Jan 2021 17:28:00 +0000</pubDate><content:encoded><![CDATA[<p>One thing that many developers struggle with when starting out is getting their head around Core Data. It is not as intuitive as it could be and there are lots of pitfalls that you can unstick you. I am going to do a series of posts about Core Data.</p><p>So let's dive in.</p><p>Firstly you can allow Xcode to setup Core Data for you. This is a double edged sword. It is bad because it hides a lot of the complexity from you making it hard to understand what is happening but it is also good because it hides a lot of the complexity from you allowing you to get started quickly.</p><p>We aren't going to let Xcode do all the work for us, but we will let it handle our managed objects. So let's begin by creating a new iOS app and selecting SwiftUI.</p><br /><a href="https://i.imgur.com/HyOSUZX.png">
 <img src="https://i.imgur.com/HyOSUZX.png" title="App Type" style="width:400px;" />
 </a><br /><br /><p>I am using Xcode 12.3 and the new SwiftUI App lifecycle methods. Not <strong>do not</strong> check the Core Data checkbox, we are going to set it up ourselves. Note that I have named the app BasicCoreData. You can give it whatever name you like.</p><p>I would suggest <strong>NOT</strong> calling it CoreData as that may cause some issues as we are using the CoreData framework it can cause the compiler to get confused. But prepending it with Basic works just fine.</p><br /><a href="https://i.imgur.com/CciBx0v.png">
 <img src="https://i.imgur.com/CciBx0v.png" title="App Details" style="width:400px;"/>
