@@ -51,7 +51,7 @@ esac
 </code></pre><br /><p>This is bascially a switch statement that switches over the current configuration that is being built. I am only interested in this code running when it is for <code>dev</code> and <code>uat</code> so that is what this handles. The <code>*</code> handles the default value of the switch, where we do nothing.</p><br /><pre><code>info_plist=<span class="string">"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_FOLDER_PATH}/Info.plist"</span>
 
 echo <span class="string">"Enabling iTunes file sharing.."</span>
-</code></pre><br /><p>This constructs the path of the built Info.plist and stores it as a variable <code>info_plist</code>. We then bring to the log using the <code>echo</code> command.</p><br /><pre><code><span class="keyword">for</span> item <span class="keyword">in</span> <span class="string">"UIFileSharingEnabled" "LSSupportsOpeningDocumentsInPlace"</span>;
+</code></pre><br /><p>This constructs the path of the built Info.plist and stores it as a variable <code>info_plist</code>. We then write to the log using the <code>echo</code> command.</p><br /><pre><code><span class="keyword">for</span> item <span class="keyword">in</span> <span class="string">"UIFileSharingEnabled" "LSSupportsOpeningDocumentsInPlace"</span>;
     <span class="keyword">do</span>
         # <span class="keyword">do</span> something here with the item
     done
@@ -61,7 +61,7 @@ val=$(/usr/libexec/<span class="type">PlistBuddy</span> -c 'print <span class="s
 
 # <span class="type">Capture</span> exit code
 exitCode=$? 
-</code></pre><br /><p>This code check to see if the looped item is included in the the plist. If we try to add an item to the plist when it already exists we get a non-zero exit code. Similarly when we try to set an item that doesn't exist then we get a non-zero exit code. We may in the future add the values permanently to the plist so we need to check if they exist and then handle it appropriately.</p><p>We also capture the exit code so that we can check if it is zero or not (it will be zero in the case that the key exists in the plist).</p><pre><code><span class="keyword">if</span> [ $exitCode == <span class="number">0</span> ] 
+</code></pre><br /><p>This code checks to see if the looped item is included in the the plist. If we try to add an item to the plist when it already exists we get a non-zero exit code. Similarly when we try to set an item that doesn't exist then we get a non-zero exit code. We may in the future add the values permanently to the plist so we need to check if they exist and then handle it appropriately.</p><p>We also capture the exit code so that we can check if it is zero or not (it will be zero in the case that the key exists in the plist).</p><pre><code><span class="keyword">if</span> [ $exitCode == <span class="number">0</span> ] 
     then
     echo <span class="string">"Setting key $item to YES"</span>
     /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Set</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
@@ -70,6 +70,39 @@ exitCode=$?
     echo <span class="string">"Adding key $item as YES"</span>
     /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Add</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
 fi
-</code></pre><br /><p>Finally we can check if the exit code is zero or not and perform the appropriate action.</p><p>So we are pretty much done. However there is one issue left to resolve. If we add this script as a build phase it will be executed before the Info.plist is copied across and our changes will be lost. 😢</p><p>So to fix this we need to make the script depend upon the existence of the Info.plist, we can do this by adding the following to the required Input files<br><br><code>$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_FOLDER_PATH)/Info.plist</code></p><p>For good measure I also uncheck <code>Based on dependency analysis</code> which will make this script run for all incremental builds.</p><p>Your build phase should now look something like this*:</p><a href="https://imgur.com/z6P4CVa.jpg">
+</code></pre><br /><p>Finally we can check if the exit code is zero or not and perform the appropriate action.</p><p>So we are pretty much done. However there is one issue left to resolve and this is the gotcha. If we add this script as a build phase it will be executed before the Info.plist is copied across and our changes will be lost. 😢</p><p>So to fix this we need to make the script depend upon the existence of the Info.plist, we can do this by adding the following to the required Input files<br><br><code>$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_FOLDER_PATH)/Info.plist</code></p><p>For good measure I also uncheck <code>Based on dependency analysis</code> which will make this script run for all incremental builds.</p><p>Your build phase should now look something like this*:</p><a href="https://imgur.com/z6P4CVa.jpg">
 <img src="https://i.imgur.com/z6P4CVa.jpg" style="width:600px;" />
-</a><p>*unfortunately my screen isn't big enough to show all the code but you can see the main points that are required.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a></div></footer></body></html>
+</a><p>*unfortunately my screen isn't big enough to show all the code but you can see the main points that are required.</p><p>Because we have added a file to our input list we could update the setting of our <code>info_plist</code> variable to the folllowing:</p><pre><code>info_plist=<span class="string">"${SCRIPT_INPUT_FILE_0}"</span>
+
+</code></pre><br /><p>All input files can be accessed in this way, they are contained in an array and are accessed via their index. This now means that we only need to manage the location of the Info.plist in the input files and not inside the script.</p><pre><code><span class="keyword">case</span> <span class="string">"${CONFIGURATION}"</span> <span class="keyword">in</span>
+
+<span class="string">"dev"</span> | <span class="string">"uat"</span> )
+
+info_plist=<span class="string">"${SCRIPT_INPUT_FILE_0}"</span> # &lt;- updated to use the input file
+
+echo <span class="string">"Enabling iTunes file sharing.."</span>
+
+<span class="keyword">for</span> item <span class="keyword">in</span> <span class="string">"UIFileSharingEnabled" "LSSupportsOpeningDocumentsInPlace"</span>;
+    <span class="keyword">do</span>
+        # <span class="type">Check</span> to see <span class="keyword">if</span> the value exists <span class="keyword">in</span> the plist
+        val=$(/usr/libexec/<span class="type">PlistBuddy</span> -c 'print <span class="string">":"</span>'${item}'<span class="string">""</span>' <span class="string">"${info_plist}"</span> <span class="number">2</span>&gt;/dev/null);
+        
+        # <span class="type">Capture</span> exit code
+        exitCode=$? 
+
+        <span class="keyword">if</span> [ $exitCode == <span class="number">0</span> ] 
+            then
+            echo <span class="string">"Setting key $item to YES"</span>
+            /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Set</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
+
+            <span class="keyword">else</span>
+            echo <span class="string">"Adding key $item as YES"</span>
+            /usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Add</span> :<span class="string">"'${item}'"</span> bool <span class="type">YES</span>' <span class="string">"${info_plist}"</span>;
+        fi
+    done
+;;
+
+
+*)
+;;
+</code></pre></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a></div></footer></body></html>
