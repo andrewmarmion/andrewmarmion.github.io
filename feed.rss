@@ -1,4 +1,72 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Fri, 15 Jan 2021 15:39:09 +0000</lastBuildDate><pubDate>Fri, 15 Jan 2021 15:39:09 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Dynamically-updating-your-Info-plist</guid><title>Dynamically updating your Info.plist</title><description>How to add properties to your Info.plist during a build phase using PlistBuddy.</description><link>https://andrewmarmion.com/posts/Dynamically-updating-your-Info-plist</link><pubDate>Fri, 15 Jan 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>One of the many things that I have had to do as an iOS developer is to update the Info.plist. This is fairly straight forward to do and it can be done inside of Xcode. A lesser known technique is that it can be done via the terminal using PlistBuddy.</p><p>Doing it via the terminal has several advantages over editing it via Xcode. Firstly you may wish to dynamically add values to your plist that update frequently (for example the latest commit hash). You could keep updating a User-Defined value in the build settings but this could get tedious and you are liable to forget to do it. It is much better to automate the process. Another reason is that you might want to dynamically add a value to the plist, for example you want to add <code>UIFileSharingEnabled</code> for certain configurations but not for others. As far as I can tell you cannot add a User-Defined value for these, so it leaves us at a deadend - or does it?</p><p>You can add and set values in your plist using <code>PlistBuddy</code>. It is fairly straight forward to use but there are some gotchas that I will point out along the way.</p><p>The basic format of a command for <code>PlistBuddy</code> is as follows:</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '&lt;command&gt; :&lt;key&gt; &lt;type&gt; &lt;value&gt;' &lt;file_name&gt;
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Thu, 21 Jan 2021 13:43:22 +0000</lastBuildDate><pubDate>Thu, 21 Jan 2021 13:43:22 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Reachability-in-SwiftUI</guid><title>NWPathMonitor the new Reachability</title><description>How to check for network connectivity in SwiftUI</description><link>https://andrewmarmion.com/posts/Reachability-in-SwiftUI</link><pubDate>Thu, 21 Jan 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>Back when I first started creating iOS apps checking for network connectivity was done use Reachability. This was convoluted and difficult to understand (or to make work consistently). I remember using Ashley Mills' <a href="https://github.com/ashleymills/Reachability.swift">Reachability</a>, amazingly this is still actively updated (at time of writing 6 months ago).</p><p>At WWDC 2018 Apple did the following talk <a href="https://developer.apple.com/videos/play/wwdc2018/715/?time=3400">Introducing Network.framework: A modern alternative to Sockets</a>, a scary title but there is a fantastic gem at around the 57 minute. Apple introduces the NWPathMonitor. This means that we no longer have to monitor Reachability and/or predict the reachability of a given host. NWPathMonitor watches the connectivity state and then provides updates when that changes.</p><p>So how do we use this? Firstly, we create an instance of the <code>NWPathMonitor</code>, then from that instance we set the <code>pathUpdateHandler</code>, we also need to define a queue for the monitor to run on.</p><pre><code><span class="keyword">let</span> monitor = <span class="type">NWPathMonitor</span>()
+monitor.<span class="property">pathUpdateHandler</span> = { path <span class="keyword">in
+    if</span> path.<span class="property">status</span> == .<span class="dotAccess">satisfied</span> {
+        <span class="call">print</span>(<span class="string">"Connected"</span>)
+    } <span class="keyword">else</span> {
+        <span class="call">print</span>(<span class="string">"Disconected"</span>)
+    }
+}
+
+<span class="keyword">let</span> queue = <span class="type">DispatchQueue</span>(label: <span class="string">"Monitor"</span>)
+monitor.<span class="call">start</span>(queue: queue)
+</code></pre><br /><p>The <code>pathUpdateHandler</code> returns a <code>NWPath.Status</code>. This status is an enum with three cases <code>unsatisfied</code> (the path is not available for use), <code>statisfied</code> (the path is available to establish connections and send data), and <code>requiresConnection</code> (the path is not currently available but establishing a new connection may activate the path).</p><p>If we are only interested in knowing if we have a connection or not then we can just look to see if the status is <code>satisfied</code> or not, as I have done above.</p><p>The <code>NWPathMonitor</code> has several different initialisers an empty initialiser that monitors all network events and two others. The first <code>init(requiredInterfaceType:)</code>, monitors a only specific type of connection so we could monitor <code>wifi</code>, <code>cellular</code> etc , and the second <code>init(prohibitedInterfaceTypes:)</code> which watches all but the prohibited types. The different types are contained in the enum <code>NWInterface.InterfaceType</code></p><ul><li><code>wifi</code></li><li><code>cellular</code></li><li><code>wiredEthernet</code></li><li><code>loopback</code></li><li><code>other</code></li></ul><br /><p>In the apps that I have built I haven't needed to use anything other than the empty initialiser for the <code>NWPathMonitor</code>.</p><p>So let's see this in a sample app.</p><p>One thing that is annoying is that the status that is returned from the <code>pathUpdateHandler</code> is <code>NWPath.Status</code> which means to use it you have to import <code>Network</code>. This is fine in the file that we are using the <code>NWPathMonitor</code> but we don't really want to import <code>Network</code> everywhere in our app, so we should create our own enum that exposes the state for us. There are three states that are returned and we could handle them all, but for simplicity we are just going to handle them as either <em>connected</em> or <em>disconnected</em>.</p><pre><code><span class="keyword">enum</span> NetworkStatus {
+    <span class="keyword">case</span> connected
+    <span class="keyword">case</span> disconnected
+}
+</code></pre><br /><p>If we are to use this in a SwiftUI app we can take advantage of <code>ObservedObject</code> and the <code>@Published</code> property wrapper to construct a class that monitors our network.</p><pre><code><span class="keyword">import</span> Network
+
+<span class="keyword">class</span> Monitor: <span class="type">ObservableObject</span> {
+    <span class="keyword">private let</span> monitor = <span class="type">NWPathMonitor</span>()
+    <span class="keyword">private let</span> queue = <span class="type">DispatchQueue</span>(label: <span class="string">"Monitor"</span>)
+
+    <span class="keyword">@Published var</span> status: <span class="type">NetworkStatus</span> = .<span class="dotAccess">connected</span>
+
+    <span class="keyword">init</span>() {
+        monitor.<span class="property">pathUpdateHandler</span> = { [<span class="keyword">weak self</span>] path <span class="keyword">in
+            guard let self</span> = <span class="keyword">self else</span> { <span class="keyword">return</span> }
+
+            <span class="comment">// Monitor runs on a background thread so we need to publish 
+            // on the main thread</span>
+            <span class="type">DispatchQueue</span>.<span class="property">main</span>.<span class="call">async</span> {
+                <span class="keyword">if</span> path.<span class="property">status</span> == .<span class="dotAccess">satisfied</span> {
+                    <span class="call">print</span>(<span class="string">"We're connected!"</span>)
+                    <span class="keyword">self</span>.<span class="property">status</span> = .<span class="dotAccess">connected</span>
+
+                } <span class="keyword">else</span> {
+                    <span class="call">print</span>(<span class="string">"No connection."</span>)
+                    <span class="keyword">self</span>.<span class="property">status</span> = .<span class="dotAccess">disconnected</span>
+                }
+            }
+        }
+        monitor.<span class="call">start</span>(queue: queue)
+    }
+}
+</code></pre><br /><p>Next we can use this in our application. We should probably only have one instance of this running in our application so using it as an <code>EnvironmentObject</code> seems like the best way to go.</p><pre><code><span class="keyword">@main
+struct</span> MyApp: <span class="type">App</span> {
+    <span class="keyword">let</span> monitor = <span class="type">Monitor</span>()
+    
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">Scene</span> {
+        <span class="type">WindowGroup</span> {
+            <span class="type">ContentView</span>()
+                .<span class="call">environmentObject</span>(monitor)
+        }
+    }
+}
+</code></pre><br /><p>Then we can access this in our <code>ContentView</code> in the following way.</p><pre><code><span class="keyword">struct</span> ContentView: <span class="type">View</span> {
+    <span class="keyword">@EnvironmentObject var</span> monitor: <span class="type">Monitor</span>
+    
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+    
+        <span class="keyword">switch</span> monitor.<span class="property">status</span> {
+        <span class="keyword">case</span> .<span class="dotAccess">connected</span>: 
+            <span class="type">Text</span>(<span class="string">"Connected"</span>)
+            
+        <span class="keyword">case</span> .<span class="dotAccess">disconnected</span>:
+            <span class="type">Text</span>(<span class="string">"Disconnected"</span>)
+        }
+    }
+}
+</code></pre><br /><p>So if we are running this on a simulator or device we can use the <code>NetworkLinkConditioner</code> to simulate loss of connectivity. <a href="https://nshipster.com/network-link-conditioner/">NSHipster</a> has a great article on how to use it.</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Dynamically-updating-your-Info-plist</guid><title>Dynamically updating your Info.plist</title><description>How to add properties to your Info.plist during a build phase using PlistBuddy.</description><link>https://andrewmarmion.com/posts/Dynamically-updating-your-Info-plist</link><pubDate>Fri, 15 Jan 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>One of the many things that I have had to do as an iOS developer is to update the Info.plist. This is fairly straight forward to do and it can be done inside of Xcode. A lesser known technique is that it can be done via the terminal using PlistBuddy.</p><p>Doing it via the terminal has several advantages over editing it via Xcode. Firstly you may wish to dynamically add values to your plist that update frequently (for example the latest commit hash). You could keep updating a User-Defined value in the build settings but this could get tedious and you are liable to forget to do it. It is much better to automate the process. Another reason is that you might want to dynamically add a value to the plist, for example you want to add <code>UIFileSharingEnabled</code> for certain configurations but not for others. As far as I can tell you cannot add a User-Defined value for these, so it leaves us at a deadend - or does it?</p><p>You can add and set values in your plist using <code>PlistBuddy</code>. It is fairly straight forward to use but there are some gotchas that I will point out along the way.</p><p>The basic format of a command for <code>PlistBuddy</code> is as follows:</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '&lt;command&gt; :&lt;key&gt; &lt;type&gt; &lt;value&gt;' &lt;file_name&gt;
 
 </code></pre><br /><h3>Common commands</h3><ul><li>Add</li><li>Set</li><li>Delete</li></ul><br /><h3>Common types</h3><ul><li>string</li><li>array</li><li>dict</li><li>bool</li><li>real</li><li>integer</li><li>date</li><li>data</li></ul><br /><p>So if we wanted to add a key to your plist (this incidentally will also create the plist if it doesn't exist) we could do the following:</p><pre><code>/usr/libexec/<span class="type">PlistBuddy</span> -c '<span class="type">Add</span> :<span class="type">UIFileSharingEnabled</span> bool <span class="type">YES</span>' <span class="type">Info</span>.<span class="property">plist</span>
 
