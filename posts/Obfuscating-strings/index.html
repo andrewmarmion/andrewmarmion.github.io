@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><title>Obfuscating strings | Andrew Marmion</title><meta name="twitter:title" content="Obfuscating strings | Andrew Marmion"/><meta name="og:title" content="Obfuscating strings | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">Obfuscating strings</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/article">Article</a></li><li><a class="tag variant-2" href="/tags/security">Security</a></li><li><a class="tag variant-3" href="/tags/string">String</a></li></ul><p class="published">Published on 6 March 2021</p></div><div class="content"><p>Security is important when you build an app. Often when we make requests to an API we need to include a special key that allows us to access it. Often this is just a string that is stored in your code.</p><p>If you didn't know this already, it is possible to get all the strings from a compiled binary and see what those keys are. Why don't you try it for yourself?</p><p>Take an <code>ipa</code> and change its extension to <code>.zip</code>. This allows you to easily extract the contents. You should have a directory structure similar to this.</p><pre><code><span class="type">App Name</span>
+│   iTunesArtwork
+│   iTunesMetaData.<span class="property">plist</span>  
+│
+└───<span class="type">Payload</span>
+│   │
+│   └───<span class="type">App</span>
+│       │   <span class="type">App</span> <span class="comment">// This is the binary</span>
+│       │   <span class="comment">// Lots of other files,</span>
+|       |   <span class="comment">// it can be quite interesting to browse in here.</span>
+│       │ 
+|       └───en.<span class="property">lproj</span> <span class="comment">//</span>
+|           | <span class="type">Localizable</span>.<span class="property">strings</span>
+│   
+└───<span class="type">META</span>-<span class="type">INF</span>
+    │   <span class="type">We</span> don't need to worry about this folder
+</code></pre><br /><p>Open a terminal in your apps directory App and run the following command, it will search the binary for all the strings and write it to a <code>strings.txt</code> file.</p><pre><code>strings <span class="type">App</span> &gt; strings.<span class="property">txt</span>
+</code></pre><br /><p>You can also run it on the <code>Localizable.strings</code> files if you want to see what is in there too.</p><p>Open the <code>strings.txt</code> in your text editor of choice (mine is VSCode as it handles large text files well), and peruse the file. I did this for an app and it had over 8000 strings in the file. A lot will look like giberish, but you might come across some gems. You're file will look like this:</p><pre><code>0Rn
+c&gt;a&gt;
+<span class="type">B</span>-u|
+0JNV\
+
+...
+
+d55366dfea5b056bf6590cf7ee93e247
+
+...
+</code></pre><br /><p>What's that? Is that an API key? Now you might be doing everything right with your networking. You are using https, you're also pinning your traffic so its harder to MITM, but you forgot to obscure your API key. A malicious actor could use that API key, and if it is a serivce that you pay for, use up it all up or make it so that you are charged a significant amount. Not exactly ideal.</p><p>Now security through obscurity is not the best solution, you just make it take a little bit longer for a determined actor to get the information, but I am all for making it harder rather than easier. And nothing is easier than having an obfuscated string in your code.</p><p>If you have to express a string that is sensitive in your code, then you need a better way. One way that I have seen used is to construct the string at runtime. This means that the string doesn't actually exist as a string but the app will construct it for you when you require it. The following is not ideal but it is a simple solution.</p><p>We create an extension on <code>String</code> and then we create some computed properties that can be used to construct the string.</p><pre><code><span class="keyword">extension</span> <span class="type">String</span> {
+
+    <span class="comment">// MARK: - Lowercase</span>
+    <span class="keyword">var</span> a: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"a"</span> }
+    <span class="keyword">var</span> b: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"b"</span> }
+    <span class="keyword">var</span> c: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"c"</span> }
+    <span class="keyword">var</span> d: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"d"</span> }
+    <span class="keyword">var</span> e: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"e"</span> }
+    <span class="keyword">var</span> f: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"f"</span> }
+    <span class="keyword">var</span> g: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"g"</span> }
+    <span class="keyword">var</span> h: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"h"</span> }
+    <span class="keyword">var</span> i: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"i"</span> }
+    <span class="keyword">var</span> j: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"j"</span> }
+    <span class="keyword">var</span> k: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"k"</span> }
+    <span class="keyword">var</span> l: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"l"</span> }
+    <span class="keyword">var</span> m: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"m"</span> }
+    <span class="keyword">var</span> n: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"n"</span> }
+    <span class="keyword">var</span> o: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"o"</span> }
+    <span class="keyword">var</span> p: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"p"</span> }
+    <span class="keyword">var</span> q: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"q"</span> }
+    <span class="keyword">var</span> r: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"r"</span> }
+    <span class="keyword">var</span> s: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"s"</span> }
+    <span class="keyword">var</span> t: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"t"</span> }
+    <span class="keyword">var</span> u: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"u"</span> }
+    <span class="keyword">var</span> v: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"v"</span> }
+    <span class="keyword">var</span> w: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"w"</span> }
+    <span class="keyword">var</span> x: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"x"</span> }
+    <span class="keyword">var</span> y: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"y"</span> }
+    <span class="keyword">var</span> z: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"z"</span> }
+
+    <span class="comment">// MARK: - Numbers</span>
+    <span class="keyword">var</span> <span class="number">_1</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"1"</span> }
+    <span class="keyword">var</span> <span class="number">_2</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"2"</span> }
+    <span class="keyword">var</span> <span class="number">_3</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"3"</span> }
+    <span class="keyword">var</span> <span class="number">_4</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"4"</span> }
+    <span class="keyword">var</span> <span class="number">_5</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"5"</span> }
+    <span class="keyword">var</span> <span class="number">_6</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"6"</span> }
+    <span class="keyword">var</span> <span class="number">_7</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"7"</span> }
+    <span class="keyword">var</span> <span class="number">_8</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"8"</span> }
+    <span class="keyword">var</span> <span class="number">_9</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"9"</span> }
+    <span class="keyword">var</span> <span class="number">_0</span>: <span class="type">String</span> { <span class="keyword">return self</span> + <span class="string">"0"</span> }
+}
+</code></pre><br /><p>One problem is that numbers cannot be used as variable names so we have to use an underscore to get around that.</p><p>So if we take the API key that we found in the strings dump <code>d55366dfea5b056bf6590cf7ee93e247</code> we can re-write it like this:</p><pre><code><span class="keyword">let</span> computed = <span class="string">""</span>.<span class="property">d</span>.<span class="number">_5</span>.<span class="number">_5</span>.<span class="number">_3</span>.<span class="number">_6</span>.<span class="number">_6</span>.<span class="property">d</span>.<span class="property">f</span>.<span class="property">e</span>.<span class="property">a</span>.<span class="number">_5</span>.<span class="property">b</span>.<span class="number">_0</span>.<span class="number">_5</span>.<span class="number">_6</span>.<span class="property">b</span>.<span class="property">f</span>.<span class="number">_6</span>.<span class="number">_5</span>.<span class="number">_9</span>.<span class="number">_0</span>.<span class="property">c</span>.<span class="property">f</span>.<span class="number">_7</span>.<span class="property">e</span>.<span class="property">e</span>.<span class="number">_9</span>.<span class="number">_3</span>.<span class="property">e</span>.<span class="number">_2</span>.<span class="number">_4</span>.<span class="number">_7</span>
+</code></pre><br /><p>Now that is a mouthful.<br><br>We could replace our API key string with the computed string that we have just created above and if we re-compile our app we won't find the API key in the string dump. That is because each letter that is being used is stored in a different part of the code, so it is unlikely that more than a few of the letters are going to end up together. Making your API key unavailable to a string dump.</p><p>So what is wrong with this?</p><ul><li>It is not ideal to write a string this way. You could easily make a mistake.</li><li>If we wanted to inject the value for the API key (as we might have different keys for different environments) this method is not going to work.</li><li>It is also going to be more computationally expensive to construct your string, so you may want to save it in memory one you create it, especially if it is long.</li><li>It doesn't stop somene from getting your API key. If they really wanted to a malicious actor could run your app on a jailbroken device and inspect what is in memory,; they would probably be able to find your API key.</li></ul><br /><p>There are many otherways to obfuscate strings in code, what are your favourite ways? Let me know.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a></div></footer></body></html>
