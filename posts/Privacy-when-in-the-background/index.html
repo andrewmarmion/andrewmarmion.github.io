@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><title>Privacy when in the background | Andrew Marmion</title><meta name="twitter:title" content="Privacy when in the background | Andrew Marmion"/><meta name="og:title" content="Privacy when in the background | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">Privacy when in the background</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/app-switcher">App Switcher</a></li><li><a class="tag variant-0" href="/tags/appdelegate">AppDelegate</a></li><li><a class="tag variant-1" href="/tags/article">Article</a></li><li><a class="tag variant-3" href="/tags/privacy">Privacy</a></li><li><a class="tag variant-3" href="/tags/scenedelegate">SceneDelegate</a></li></ul><p class="published">Published on 10 March 2021</p></div><div class="content"><p>Many applications display sensitive information: banking, tax, and medical applications to name but a few all contain information that you may not wish to share with other people.</p><p>iOS introduced the App Switcher back in iOS 4 (that is a long time ago). Since then the experience has gotten better and better. When you switch apps you seen a snapshot of the application, this could potentially leak "sensitive" information. Luckily you can easily change what is snapshotted so that no sensitive information leaks.</p><p>Firstly we are going to need to create something to display when the application goes into the background. The simplest way is to create our own <code>UIViewController</code>.</p><p>Here is a very simple view controller that we could use.</p><br /><pre><code><span class="keyword">class</span> PrivacyViewController: <span class="type">UIViewController</span> {
+    <span class="keyword">override func</span> viewDidLoad() {
+        <span class="keyword">super</span>.<span class="call">viewDidLoad</span>()
+        view.<span class="property">backgroundColor</span> = .<span class="dotAccess">systemBlue</span>
+        <span class="comment">// You can do something nicer here, 
+        // just showing a color is not that exciting.</span>
+    }
+}
+</code></pre><br /><p>We could make this as complex or as simple as we like but the above is enough for our needs. It is not too difficult to get this working in either the AppDelegate (for pre-iOS 13) or the SceneDelegate (for iOS 13+).</p><h2>AppDelegate</h2><p>We need to utilise a couple of the functions that the AppDelegate provides <code>applicationDidEnterBackground(application:)</code> and <code>applicationWillEnterForeground(application:)</code> we will use these to add and remove our privacy view respectively. We will also need a variable in our AppDelegate to track the window that we are showing, if we don't keep track of it we won't be able to remove it once the application returns to the foreground.</p><p>So here is a sample AppDelegate, I have removed everything that is not pertinent to the example.</p><p><code>showPrivacyWindow</code> is called when the application enters the background. Here we construct a new <code>UIWindow</code>, called <code>privacyWindow</code> and set its <code>rootViewController</code> to be an instance of our <code>PrivacyViewController</code>. We then set the windowLevel of our <code>privacyWindow</code>, this sets the z-axis of the <code>UIWindow</code>. We want it to be above everything so we set it to <code>.alert + 1</code>. We then call <code>.makeKeyAndVisible()</code> so that our window is shown.</p><p><code>hidePrivacyWindow</code> is called when the application enters the foreground. We need to check that we have set a privacyWindow previously, we do this with an <code>if-let</code>. We are going to perform an animation here so that the <code>privacyWindow</code> disappears nicely and not abruptly. Once the animation has completed we are going to hide the <code>privacyWindow</code> and then we are going to set it to <code>nil</code> so that it is completely removed.</p><br /><pre><code><span class="keyword">@UIApplicationMain
+class</span> AppDelegate: <span class="type">UIResponder</span>, <span class="type">UIApplicationDelegate</span> {    
+
+    <span class="keyword">private var</span> privacyWindow: <span class="type">UIWindow</span>?
+    
+    <span class="keyword">func</span> applicationDidEnterBackground(<span class="keyword">_</span> application: <span class="type">UIApplication</span>) {
+        <span class="call">showPrivacyWindow</span>()
+    }
+    
+    <span class="keyword">func</span> applicationWillEnterForeground(<span class="keyword">_</span> application: <span class="type">UIApplication</span>) {
+        <span class="call">hidePrivacyWindow</span>()
+    }
+
+    <span class="keyword">private func</span> showPrivacyWindow() {
+        privacyWindow = <span class="type">UIWindow</span>(frame: <span class="type">UIScreen</span>.<span class="property">main</span>.<span class="property">bounds</span>)
+        privacyWindow?.<span class="property">rootViewController</span> = <span class="type">PrivacyViewController</span>()
+        privacyWindow?.<span class="property">windowLevel</span> = .<span class="dotAccess">alert</span> + <span class="number">1</span>
+        privacyWindow?.<span class="call">makeKeyAndVisible</span>()
+    }
+
+    <span class="keyword">private func</span> hidePrivacyWindow() {
+        <span class="keyword">if let</span> privacyWindow = <span class="keyword">self</span>.<span class="property">privacyWindow</span> {
+            <span class="type">UIView</span>.<span class="call">animate</span>(
+                withDuration: <span class="number">0.5</span>,
+                delay: <span class="number">0.0</span>,
+                options: .<span class="dotAccess">curveEaseOut</span>,
+                animations: { privacyWindow.<span class="property">rootViewController</span>?.<span class="property">view</span>.<span class="property">alpha</span> = <span class="number">0</span> }
+                completion: { <span class="keyword">_ in 
+                    self</span>.<span class="property">privacyWindow</span>?.<span class="property">isHidden</span> = <span class="keyword">true
+                    self</span>.<span class="property">privacyWindow</span> = <span class="keyword">nil</span>
+                })
+        }
+    }
+}
+</code></pre><br /><h2>SceneDelegate</h2><p>Setting it up in the SceneDelegate is just as easy. In fact it is almost the same as for the AppDelegate. We use <code>sceneDidEnterBackground(scene:)</code> and <code>sceneWillEnterForeground(scene:)</code> to add and remove the <code>privacyWindow</code> respectively.</p><p>In the <code>showPrivacyWindow</code> is where the biggest change occurs, we need to get the current windowScene so that we can construct a <code>UIWindow</code> that matches. So we use a <code>guard-let</code> to get the scene from the window. Then we set up the <code>privacyWindow</code> in the same way as we did for the AppDelegate.</p><p>There are no changes to the <code>hidePrivacyWindow</code> we can perform the same animation as we did before.</p><br /><pre><code><span class="keyword">class</span> SceneDelegate: <span class="type">UIResponder</span>, <span class="type">UIWindowSceneDelegate</span> {
+
+    <span class="keyword">private var</span> privacyWindow: <span class="type">UIWindow</span>?
+    
+    <span class="keyword">func</span> sceneDidEnterBackground(<span class="keyword">_</span> scene: <span class="type">UIScene</span>) {
+        <span class="call">showPrivacyWindow</span>()
+    }
+
+    <span class="keyword">func</span> sceneWillEnterForeground(<span class="keyword">_</span> scene: <span class="type">UIScene</span>) {
+        <span class="call">showPrivacyWindow</span>()
+    }
+
+    <span class="keyword">private func</span> showPrivacyWindow() {
+        <span class="keyword">guard let</span> windowScene = <span class="keyword">self</span>.<span class="property">window</span>?.<span class="property">windowScene</span> <span class="keyword">else</span> { <span class="keyword">return</span> }
+        
+        privacyWindow = <span class="type">UIWindow</span>(windowScene: windowScene)
+        privacyWindow?.<span class="property">rootViewController</span> = <span class="type">PrivacyViewController</span>()
+        privacyWindow?.<span class="property">windowLevel</span> = .<span class="dotAccess">alert</span> + <span class="number">1</span>
+        privacyWindow?.<span class="call">makeKeyAndVisible</span>()
+    }
+
+    <span class="keyword">private func</span> hidePrivacyWindow() {
+        <span class="keyword">if let</span> privacyWindow = <span class="keyword">self</span>.<span class="property">privacyWindow</span> {
+            <span class="type">UIView</span>.<span class="call">animate</span>(
+                withDuration: <span class="number">0.5</span>,
+                delay: <span class="number">0.0</span>,
+                options: .<span class="dotAccess">curveEaseOut</span>,
+                animations: { privacyWindow.<span class="property">rootViewController</span>?.<span class="property">view</span>.<span class="property">alpha</span> = <span class="number">0</span> }
+                completion: { <span class="keyword">_ in 
+                    self</span>.<span class="property">privacyWindow</span>?.<span class="property">isHidden</span> = <span class="keyword">true
+                    self</span>.<span class="property">privacyWindow</span> = <span class="keyword">nil</span>
+                })
+        }
+    }
+
+}
+</code></pre><br /><p>Adding a privacy window to your app is trivial and it shows your users that you value their privacy.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a></div></footer></body></html>

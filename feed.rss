@@ -1,4 +1,82 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Sat, 6 Mar 2021 19:47:03 +0000</lastBuildDate><pubDate>Sat, 6 Mar 2021 19:47:03 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Obfuscating-strings</guid><title>Obfuscating strings</title><description>Security through obscurity? Is there such a thing?</description><link>https://andrewmarmion.com/posts/Obfuscating-strings</link><pubDate>Sat, 6 Mar 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>Security is important when you build an app. Often when we make requests to an API we need to include a special key that allows us to access it. Often this is just a string that is stored in your code.</p><p>If you didn't know this already, it is possible to get all the strings from a compiled binary and see what those keys are. Why don't you try it for yourself?</p><p>Take an <code>ipa</code> and change its extension to <code>.zip</code>. This allows you to easily extract the contents. You should have a directory structure similar to this.</p><pre><code><span class="type">App Name</span>
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Wed, 10 Mar 2021 14:39:30 +0000</lastBuildDate><pubDate>Wed, 10 Mar 2021 14:39:30 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Privacy-when-in-the-background</guid><title>Privacy when in the background</title><description>Obscuring the view when using the App Switcher on iOS</description><link>https://andrewmarmion.com/posts/Privacy-when-in-the-background</link><pubDate>Wed, 10 Mar 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>Many applications display sensitive information: banking, tax, and medical applications to name but a few all contain information that you may not wish to share with other people.</p><p>iOS introduced the App Switcher back in iOS 4 (that is a long time ago). Since then the experience has gotten better and better. When you switch apps you seen a snapshot of the application, this could potentially leak "sensitive" information. Luckily you can easily change what is snapshotted so that no sensitive information leaks.</p><p>Firstly we are going to need to create something to display when the application goes into the background. The simplest way is to create our own <code>UIViewController</code>.</p><p>Here is a very simple view controller that we could use.</p><br /><pre><code><span class="keyword">class</span> PrivacyViewController: <span class="type">UIViewController</span> {
+    <span class="keyword">override func</span> viewDidLoad() {
+        <span class="keyword">super</span>.<span class="call">viewDidLoad</span>()
+        view.<span class="property">backgroundColor</span> = .<span class="dotAccess">systemBlue</span>
+        <span class="comment">// You can do something nicer here, 
+        // just showing a color is not that exciting.</span>
+    }
+}
+</code></pre><br /><p>We could make this as complex or as simple as we like but the above is enough for our needs. It is not too difficult to get this working in either the AppDelegate (for pre-iOS 13) or the SceneDelegate (for iOS 13+).</p><h2>AppDelegate</h2><p>We need to utilise a couple of the functions that the AppDelegate provides <code>applicationDidEnterBackground(application:)</code> and <code>applicationWillEnterForeground(application:)</code> we will use these to add and remove our privacy view respectively. We will also need a variable in our AppDelegate to track the window that we are showing, if we don't keep track of it we won't be able to remove it once the application returns to the foreground.</p><p>So here is a sample AppDelegate, I have removed everything that is not pertinent to the example.</p><p><code>showPrivacyWindow</code> is called when the application enters the background. Here we construct a new <code>UIWindow</code>, called <code>privacyWindow</code> and set its <code>rootViewController</code> to be an instance of our <code>PrivacyViewController</code>. We then set the windowLevel of our <code>privacyWindow</code>, this sets the z-axis of the <code>UIWindow</code>. We want it to be above everything so we set it to <code>.alert + 1</code>. We then call <code>.makeKeyAndVisible()</code> so that our window is shown.</p><p><code>hidePrivacyWindow</code> is called when the application enters the foreground. We need to check that we have set a privacyWindow previously, we do this with an <code>if-let</code>. We are going to perform an animation here so that the <code>privacyWindow</code> disappears nicely and not abruptly. Once the animation has completed we are going to hide the <code>privacyWindow</code> and then we are going to set it to <code>nil</code> so that it is completely removed.</p><br /><pre><code><span class="keyword">@UIApplicationMain
+class</span> AppDelegate: <span class="type">UIResponder</span>, <span class="type">UIApplicationDelegate</span> {    
+
+    <span class="keyword">private var</span> privacyWindow: <span class="type">UIWindow</span>?
+    
+    <span class="keyword">func</span> applicationDidEnterBackground(<span class="keyword">_</span> application: <span class="type">UIApplication</span>) {
+        <span class="call">showPrivacyWindow</span>()
+    }
+    
+    <span class="keyword">func</span> applicationWillEnterForeground(<span class="keyword">_</span> application: <span class="type">UIApplication</span>) {
+        <span class="call">hidePrivacyWindow</span>()
+    }
+
+    <span class="keyword">private func</span> showPrivacyWindow() {
+        privacyWindow = <span class="type">UIWindow</span>(frame: <span class="type">UIScreen</span>.<span class="property">main</span>.<span class="property">bounds</span>)
+        privacyWindow?.<span class="property">rootViewController</span> = <span class="type">PrivacyViewController</span>()
+        privacyWindow?.<span class="property">windowLevel</span> = .<span class="dotAccess">alert</span> + <span class="number">1</span>
+        privacyWindow?.<span class="call">makeKeyAndVisible</span>()
+    }
+
+    <span class="keyword">private func</span> hidePrivacyWindow() {
+        <span class="keyword">if let</span> privacyWindow = <span class="keyword">self</span>.<span class="property">privacyWindow</span> {
+            <span class="type">UIView</span>.<span class="call">animate</span>(
+                withDuration: <span class="number">0.5</span>,
+                delay: <span class="number">0.0</span>,
+                options: .<span class="dotAccess">curveEaseOut</span>,
+                animations: { privacyWindow.<span class="property">rootViewController</span>?.<span class="property">view</span>.<span class="property">alpha</span> = <span class="number">0</span> }
+                completion: { <span class="keyword">_ in 
+                    self</span>.<span class="property">privacyWindow</span>?.<span class="property">isHidden</span> = <span class="keyword">true
+                    self</span>.<span class="property">privacyWindow</span> = <span class="keyword">nil</span>
+                })
+        }
+    }
+}
+</code></pre><br /><h2>SceneDelegate</h2><p>Setting it up in the SceneDelegate is just as easy. In fact it is almost the same as for the AppDelegate. We use <code>sceneDidEnterBackground(scene:)</code> and <code>sceneWillEnterForeground(scene:)</code> to add and remove the <code>privacyWindow</code> respectively.</p><p>In the <code>showPrivacyWindow</code> is where the biggest change occurs, we need to get the current windowScene so that we can construct a <code>UIWindow</code> that matches. So we use a <code>guard-let</code> to get the scene from the window. Then we set up the <code>privacyWindow</code> in the same way as we did for the AppDelegate.</p><p>There are no changes to the <code>hidePrivacyWindow</code> we can perform the same animation as we did before.</p><br /><pre><code><span class="keyword">class</span> SceneDelegate: <span class="type">UIResponder</span>, <span class="type">UIWindowSceneDelegate</span> {
+
+    <span class="keyword">private var</span> privacyWindow: <span class="type">UIWindow</span>?
+    
+    <span class="keyword">func</span> sceneDidEnterBackground(<span class="keyword">_</span> scene: <span class="type">UIScene</span>) {
+        <span class="call">showPrivacyWindow</span>()
+    }
+
+    <span class="keyword">func</span> sceneWillEnterForeground(<span class="keyword">_</span> scene: <span class="type">UIScene</span>) {
+        <span class="call">showPrivacyWindow</span>()
+    }
+
+    <span class="keyword">private func</span> showPrivacyWindow() {
+        <span class="keyword">guard let</span> windowScene = <span class="keyword">self</span>.<span class="property">window</span>?.<span class="property">windowScene</span> <span class="keyword">else</span> { <span class="keyword">return</span> }
+        
+        privacyWindow = <span class="type">UIWindow</span>(windowScene: windowScene)
+        privacyWindow?.<span class="property">rootViewController</span> = <span class="type">PrivacyViewController</span>()
+        privacyWindow?.<span class="property">windowLevel</span> = .<span class="dotAccess">alert</span> + <span class="number">1</span>
+        privacyWindow?.<span class="call">makeKeyAndVisible</span>()
+    }
+
+    <span class="keyword">private func</span> hidePrivacyWindow() {
+        <span class="keyword">if let</span> privacyWindow = <span class="keyword">self</span>.<span class="property">privacyWindow</span> {
+            <span class="type">UIView</span>.<span class="call">animate</span>(
+                withDuration: <span class="number">0.5</span>,
+                delay: <span class="number">0.0</span>,
+                options: .<span class="dotAccess">curveEaseOut</span>,
+                animations: { privacyWindow.<span class="property">rootViewController</span>?.<span class="property">view</span>.<span class="property">alpha</span> = <span class="number">0</span> }
+                completion: { <span class="keyword">_ in 
+                    self</span>.<span class="property">privacyWindow</span>?.<span class="property">isHidden</span> = <span class="keyword">true
+                    self</span>.<span class="property">privacyWindow</span> = <span class="keyword">nil</span>
+                })
+        }
+    }
+
+}
+</code></pre><br /><p>Adding a privacy window to your app is trivial and it shows your users that you value their privacy.</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Obfuscating-strings</guid><title>Obfuscating strings</title><description>Security through obscurity? Is there such a thing?</description><link>https://andrewmarmion.com/posts/Obfuscating-strings</link><pubDate>Sat, 6 Mar 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>Security is important when you build an app. Often when we make requests to an API we need to include a special key that allows us to access it. Often this is just a string that is stored in your code.</p><p>If you didn't know this already, it is possible to get all the strings from a compiled binary and see what those keys are. Why don't you try it for yourself?</p><p>Take an <code>ipa</code> and change its extension to <code>.zip</code>. This allows you to easily extract the contents. You should have a directory structure similar to this.</p><pre><code><span class="type">App Name</span>
 │   iTunesArtwork
 │   iTunesMetaData.<span class="property">plist</span>  
 │
