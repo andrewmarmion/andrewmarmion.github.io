@@ -1,4 +1,216 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Wed, 10 Mar 2021 14:39:30 +0000</lastBuildDate><pubDate>Wed, 10 Mar 2021 14:39:30 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Privacy-when-in-the-background</guid><title>Privacy when in the background</title><description>Obscuring the view when using the App Switcher on iOS</description><link>https://andrewmarmion.com/posts/Privacy-when-in-the-background</link><pubDate>Wed, 10 Mar 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>Many applications display sensitive information: banking, tax, and medical applications to name but a few all contain information that you may not wish to share with other people.</p><p>iOS introduced the App Switcher back in iOS 4 (that is a long time ago). Since then the experience has gotten better and better. When you switch apps you seen a snapshot of the application, this could potentially leak "sensitive" information. Luckily you can easily change what is snapshotted so that no sensitive information leaks.</p><p>Firstly we are going to need to create something to display when the application goes into the background. The simplest way is to create our own <code>UIViewController</code>.</p><p>Here is a very simple view controller that we could use.</p><br /><pre><code><span class="keyword">class</span> PrivacyViewController: <span class="type">UIViewController</span> {
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Sat, 27 Mar 2021 09:20:47 +0000</lastBuildDate><pubDate>Sat, 27 Mar 2021 09:20:47 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Custom-environment-values-in-swiftui</guid><title>Custom Environment Values in SwiftUI</title><description>Creating custom environment values allows you to pass customizations without exposing them.</description><link>https://andrewmarmion.com/posts/Custom-environment-values-in-swiftui</link><pubDate>Sat, 27 Mar 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>When creating custom views in SwiftUI we can expose customizations via the view's initializer. However this may not be what we want to do, we might want to be able to adjust this at a higher level. Maybe we are applying a specific style to our application so by being able to set values at a higher level would mean that we don't have to set the same values in multiple places.</p><p>Let's take a simple example of a custom label. It might look something like this:</p><pre><code><span class="keyword">struct</span> MyLabel: <span class="type">View</span> {
+
+    <span class="keyword">var</span> text: <span class="type">String</span>
+    <span class="keyword">var</span> fontName: <span class="type">String</span>
+    <span class="keyword">var</span> fontSize: <span class="type">CGFloat</span>
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">Text</span>(text)
+            .<span class="call">font</span>(.<span class="call">custom</span>(fontName, size: fontSize))
+    }
+}
+</code></pre><br /><p>Everytime we initialise this label we are going to have to pass it a <code>fontName</code> and a <code>fontSize</code>. This is going to get quite repetative, and it could become frustrating if we wanted to change the font of every instance of <code>MyLabel</code> that we create. We could specify default values for <code>fontName</code> and <code>fontSize</code> but it would be nicer if we could specify these later on in the view heirarchy.</p><p>Similar to the way that we can set the font on a <code>Text</code> view would like to be able to set our custom font properties on <code>MyLabel</code> so we should be able to do something like this</p><pre><code><span class="type">MyLabel</span>()
+    .<span class="call">setMyCustomFont</span>(...)
+</code></pre><br /><p>We should also be able to do something like this:</p><pre><code><span class="type">MyLabel</span>()
+    .<span class="call">padding</span>()
+    .<span class="call">background</span>(<span class="type">Color</span>.<span class="property">yellow</span>)
+    .<span class="call">setMyCustomFont</span>(...)
+</code></pre><br /><p>So it should not matter if we set the value further up the view hierarchy it should propagate down to <code>MyLabel</code>. This means that in our second example the call to <code>setMyCustomFont</code> be available on any type that conforms to <code>View</code>.</p><p>This would give us something like this:</p><pre><code><span class="keyword">extension</span> <span class="type">View</span> {
+    <span class="keyword">func</span> setMyCustomFont(...) -&gt; <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="call">environment</span>(&lt;<span class="type">A Keypath</span>&gt;, &lt;<span class="type">Value</span>&gt;)
+    }
+}
+</code></pre><p>To be able to do this we need to constuct a keypath on the environment and set it to a value.</p><p>I don't want to just pass the values in the same way that I would have passed in the initializer, I am going to pass a struct that contains the properties that I wish to add <code>MyLabel</code>. To do this I am going to start with a protocol. This means that I can create different structs that conform to the protocol and pass them to my function, allowing me to quickly change the variables as needed.</p><pre><code><span class="keyword">protocol</span> CustomFont {
+    <span class="keyword">var</span> fontName: <span class="type">String</span> { <span class="keyword">get</span> }
+    <span class="keyword">var</span> fontSize: <span class="type">CGFloat</span> { <span class="keyword">get</span> }
+}
+</code></pre><br /><p>To construct the environment key we need a default implementation</p><pre><code><span class="keyword">struct</span> DefaultCustomFont: <span class="type">CustomFont</span> {
+    <span class="keyword">let</span> fontName: <span class="type">String</span> = <span class="string">"Baskerville"</span>
+    <span class="keyword">let</span> fontSize: <span class="type">CGFloat</span> = <span class="number">20</span>
+}
+
+</code></pre><br /><p>The key is then constructed in the following way. Using the protocol as the type but our default implementation as the default value. The <code>defaultValue</code> is what will be used if we do not call our <code>setMyCustomFont</code> on the view heirarchy.</p><pre><code><span class="keyword">struct</span> MyCustomFontKey: <span class="type">EnvironmentKey</span> {
+    <span class="keyword">static let</span> defaultValue: <span class="type">CustomFont</span> = <span class="type">DefaultCustomFont</span>()
+}
+</code></pre><br /><p>We next need to create the key path that will live in the environment. We add this to the <code>EnvironmentValues</code> in an extension.</p><pre><code><span class="keyword">extension</span> <span class="type">EnvironmentValues</span> {
+    <span class="keyword">var</span> myCustomFont: <span class="type">CustomFont</span> {
+        <span class="keyword">get</span> { <span class="keyword">self</span>[<span class="type">MyCustomFontKey</span>].<span class="keyword">self</span> }
+        <span class="keyword">set</span> { <span class="keyword">self</span>[<span class="type">MyCustomFontKey</span>].<span class="keyword">self</span> = newValue }
+    }
+}
+</code></pre><br /><p>We are now ready to complete the implementation of the <code>setMyCustomFont</code> function.</p><pre><code><span class="keyword">extension</span> <span class="type">View</span> {
+    <span class="keyword">func</span> setMyCustomFont(<span class="keyword">_</span> customFont: <span class="type">CustomFont</span>) -&gt; <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="call">environment</span>(\.<span class="property">myCustomFont</span>, customFont)
+    }
+}
+</code></pre><br /><p>Now that we have completed the <code>setMyCustomFont</code> function we need to update <code>MyLabel</code> to use it.</p><pre><code><span class="keyword">struct</span> MyLabel: <span class="type">View</span> {
+
+    <span class="keyword">var</span> text: <span class="type">String</span>
+    <span class="keyword">var</span> customFont: <span class="type">CustomFont</span>?
+    <span class="keyword">@Environment</span>(\.<span class="property">myCustomFont</span>) <span class="keyword">var</span> myCustomFont
+
+    <span class="keyword">init</span>(
+        text: <span class="type">String</span>,
+        customFont: <span class="type">CustomFont</span>? = <span class="keyword">nil</span>
+    ) {
+        <span class="keyword">self</span>.<span class="property">text</span> = text
+        <span class="keyword">self</span>.<span class="property">customFont</span> = customFont
+    }
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">Text</span>(text)
+            .<span class="call">font</span>(.<span class="call">custom</span>(fontName, size: fontSize))
+    }
+
+    <span class="keyword">private var</span> fontName: <span class="type">String</span> {
+        customFont?.<span class="property">fontName</span> ?? myCustomFont.<span class="property">fontName</span>
+    }
+
+    <span class="keyword">private var</span> fontSize: <span class="type">CGFloat</span> {
+        customFont?.<span class="property">fontSize</span> ?? myCustomFont.<span class="property">fontSize</span>
+    }
+}
+</code></pre><br /><p>So in our code we have removed the explicit <code>fontName</code> and <code>fontSize</code> and replaced it with a <code>customFont</code> variable that takes a struct that confroms to the <code>CustomFont</code> protocol. This is exposed in our initializer with a default value of <code>nil</code>. The <code>@Environment</code> takes the key path we created and sets the value to <code>myCustomFont</code> (the name of the variable doesn't matter, but by convention it is usually named after the keypath that it is using). The computed properties <code>fontName</code> and <code>fontSize</code> allow us to easily overide the environment by passing a non-nil <code>customFont</code>.</p><p>Now we are able to customize <code>MyLabel</code> in the following ways:</p><pre><code><span class="type">VStack</span> {
+    <span class="type">MyLabel</span>(text: <span class="string">"Hello"</span>)
+        .<span class="call">setMyCustomFont</span>(<span class="type">MyCustomFont</span>())
+}
+</code></pre><br /><pre><code><span class="type">VStack</span> {
+    <span class="type">MyLabel</span>(text: <span class="string">"Hello"</span>)
+    <span class="type">MyLabel</span>(text: <span class="string">"Goodbye"</span>)
+}
+.<span class="call">setMyCustomFont</span>(<span class="type">MyCustomFont</span>())
+</code></pre><br /><p>Although this is slightly contrived example, as the <code>.font</code> exists, it does show how it is possible to create your own environment variables this could be especially useful if you are wanting to change the styling dynamically. It can also be coupled with an <code>@EnvironmentObject</code> so that styles can be changed on a simple press of a button.</p><p>Here is a fully working example that you can drop into a SwiftUI project</p><pre><code><span class="keyword">import</span> SwiftUI
+
+<span class="comment">// MARK: - CustomFont implementations</span>
+
+<span class="keyword">protocol</span> CustomFont {
+    <span class="keyword">var</span> fontName: <span class="type">String</span> { <span class="keyword">get</span> }
+    <span class="keyword">var</span> fontSize: <span class="type">CGFloat</span> { <span class="keyword">get</span> }
+}
+
+<span class="keyword">struct</span> DefaultCustomFont: <span class="type">CustomFont</span> {
+    <span class="keyword">let</span> fontName: <span class="type">String</span> = <span class="string">"Baskerville"</span>
+    <span class="keyword">let</span> fontSize: <span class="type">CGFloat</span> = <span class="number">20</span>
+}
+
+<span class="keyword">struct</span> MyCustomFont: <span class="type">CustomFont</span> {
+    <span class="keyword">let</span> fontName: <span class="type">String</span> = <span class="string">"Chalkduster"</span>
+    <span class="keyword">let</span> fontSize: <span class="type">CGFloat</span> = <span class="number">22</span>
+}
+
+<span class="keyword">struct</span> MyOtherFont: <span class="type">CustomFont</span> {
+    <span class="keyword">let</span> fontName: <span class="type">String</span> = <span class="string">"Thonburi"</span>
+    <span class="keyword">let</span> fontSize: <span class="type">CGFloat</span> = <span class="number">30</span>
+}
+
+<span class="comment">// MARK: - An ObservableObject that published a CustomFont</span>
+<span class="keyword">class</span> MyEnvironment: <span class="type">ObservableObject</span> {
+    <span class="keyword">@Published var</span> myFont: <span class="type">CustomFont</span> = <span class="type">MyOtherFont</span>()
+
+    <span class="keyword">private var</span> count = <span class="number">0</span>
+
+    <span class="keyword">func</span> changeFont() {
+        count += <span class="number">1</span>
+        <span class="keyword">let</span> value = count % <span class="number">3</span>
+        <span class="keyword">switch</span> value {
+            <span class="keyword">case</span> <span class="number">0</span>:
+                myFont = <span class="type">MyOtherFont</span>()
+            <span class="keyword">case</span> <span class="number">1</span>:
+                myFont = <span class="type">MyCustomFont</span>()
+            <span class="keyword">case</span> <span class="number">2</span>:
+                myFont = <span class="type">DefaultCustomFont</span>()
+            <span class="keyword">default</span>:
+                <span class="keyword">break</span>
+        }
+    }
+}
+
+<span class="comment">// MARK: - MyLabel</span>
+<span class="keyword">struct</span> MyLabel: <span class="type">View</span> {
+
+    <span class="keyword">var</span> text: <span class="type">String</span>
+    <span class="keyword">var</span> customFont: <span class="type">CustomFont</span>?
+    <span class="keyword">@Environment</span>(\.<span class="property">myCustomFont</span>) <span class="keyword">var</span> myFont
+
+    <span class="keyword">init</span>(
+        text: <span class="type">String</span>,
+        customFont: <span class="type">CustomFont</span>? = <span class="keyword">nil</span>
+    ) {
+        <span class="keyword">self</span>.<span class="property">text</span> = text
+        <span class="keyword">self</span>.<span class="property">customFont</span> = customFont
+    }
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">Text</span>(text)
+            .<span class="call">font</span>(.<span class="call">custom</span>(fontName, size: fontSize))
+    }
+
+    <span class="keyword">private var</span> fontName: <span class="type">String</span> {
+        customFont?.<span class="property">fontName</span> ?? myFont.<span class="property">fontName</span>
+    }
+
+    <span class="keyword">private var</span> fontSize: <span class="type">CGFloat</span> {
+        customFont?.<span class="property">fontSize</span> ?? myFont.<span class="property">fontSize</span>
+    }
+}
+
+<span class="comment">// MARK: - Environment modifier</span>
+<span class="keyword">extension</span> <span class="type">View</span> {
+    <span class="keyword">func</span> setMyCustomFont(<span class="keyword">_</span> customFont: <span class="type">CustomFont</span>) -&gt; <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="call">environment</span>(\.<span class="property">myCustomFont</span>, customFont)
+    }
+}
+
+<span class="comment">// MARK: - Environment Key and Value</span>
+<span class="keyword">fileprivate struct</span> MyCustomFontKey: <span class="type">EnvironmentKey</span> {
+    <span class="keyword">static let</span> defaultValue: <span class="type">CustomFont</span> = <span class="type">DefaultCustomFont</span>()
+}
+
+<span class="keyword">extension</span> <span class="type">EnvironmentValues</span> {
+    <span class="keyword">var</span> myCustomFont: <span class="type">CustomFont</span> {
+        <span class="keyword">get</span> { <span class="keyword">self</span>[<span class="type">MyCustomFontKey</span>].<span class="keyword">self</span> }
+        <span class="keyword">set</span> { <span class="keyword">self</span>[<span class="type">MyCustomFontKey</span>].<span class="keyword">self</span> = newValue }
+    }
+}
+
+<span class="comment">// MARK: - ContentView</span>
+<span class="keyword">struct</span> ContentView: <span class="type">View</span> {
+
+    <span class="keyword">@EnvironmentObject var</span> myEnvironment: <span class="type">MyEnvironment</span>
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">20</span>) {
+            <span class="type">VStack</span> {
+                <span class="type">MyLabel</span>(text: <span class="string">"Hello"</span>)
+                <span class="type">MyLabel</span>(text: <span class="string">"GoodBye"</span>)
+            }
+            .<span class="call">setMyCustomFont</span>(myEnvironment.<span class="property">myFont</span>)
+
+            <span class="comment">// There are many ways that we can now pass the font</span>
+            <span class="type">MyLabel</span>(text: <span class="string">"Default"</span>)
+
+            <span class="type">MyLabel</span>(text: <span class="string">"Other"</span>)
+                .<span class="call">setMyCustomFont</span>(<span class="type">MyOtherFont</span>())
+
+            <span class="type">MyLabel</span>(text: <span class="string">"Custom"</span>, customFont: <span class="type">MyCustomFont</span>())
+
+            <span class="type">MyLabel</span>(text: <span class="string">"Environment"</span>, customFont: myEnvironment.<span class="property">myFont</span>)
+
+            <span class="type">Button</span>(
+                action: { myEnvironment.<span class="call">changeFont</span>() },
+                label: { <span class="type">Text</span>(<span class="string">"Change font"</span>) }
+            )
+        }
+    }
+}
+
+<span class="keyword">struct</span> ContentView_Previews: <span class="type">PreviewProvider</span> {
+    <span class="keyword">static var</span> previews: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">ContentView</span>()
+            .<span class="call">environmentObject</span>(<span class="type">MyEnvironment</span>())
+    }
+}
+</code></pre>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Privacy-when-in-the-background</guid><title>Privacy when in the background</title><description>Obscuring the view when using the App Switcher on iOS</description><link>https://andrewmarmion.com/posts/Privacy-when-in-the-background</link><pubDate>Wed, 10 Mar 2021 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>Many applications display sensitive information: banking, tax, and medical applications to name but a few all contain information that you may not wish to share with other people.</p><p>iOS introduced the App Switcher back in iOS 4 (that is a long time ago). Since then the experience has gotten better and better. When you switch apps you seen a snapshot of the application, this could potentially leak "sensitive" information. Luckily you can easily change what is snapshotted so that no sensitive information leaks.</p><p>Firstly we are going to need to create something to display when the application goes into the background. The simplest way is to create our own <code>UIViewController</code>.</p><p>Here is a very simple view controller that we could use.</p><br /><pre><code><span class="keyword">class</span> PrivacyViewController: <span class="type">UIViewController</span> {
     <span class="keyword">override func</span> viewDidLoad() {
         <span class="keyword">super</span>.<span class="call">viewDidLoad</span>()
         view.<span class="property">backgroundColor</span> = .<span class="dotAccess">systemBlue</span>
