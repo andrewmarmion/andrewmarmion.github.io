@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head><title>In memory images for XCTest | Andrew Marmion</title><meta name="twitter:title" content="In memory images for XCTest | Andrew Marmion"/><meta name="og:title" content="In memory images for XCTest | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">In memory images for XCTest</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/article">Article</a></li><li><a class="tag variant-5" href="/tags/uiimage">UIImage</a></li><li><a class="tag variant-7" href="/tags/xctest">XCTest</a></li></ul><p class="published">Published on 11 September 2021</p></div><div class="content"><p>When testing our code, sometimes it is necessary to test whether we have rendered an image or not. We could add images to our test bundle but this could lead to performance issues with I/O or depending on your setup they could be flaky.</p><p>We can get around this by using an in memory image, and the beauty of this is that we don't need to use the same size image we can use a smaller image making our tests even more light weight.</p><p>So let's see an example of where we could benefit from doing this:</p><br /><pre><code><span class="keyword">func</span> test_loader_completesWithCorrectImage() <span class="keyword">throws</span> {
+    <span class="keyword">let</span> imageData = <span class="keyword">try</span> <span class="type">XCTUnwrap</span>(<span class="type">UIImage</span>(named: <span class="string">"test-image"</span>)?.<span class="call">pngData</span>())
+    loader.<span class="call">completeImageLoading</span>(with: imageData)
+    <span class="call">XCTAssertEqual</span>(
+        view.<span class="property">renderedImage</span>, 
+        imageData, 
+        <span class="string">"Expected image for view once image loading completes successfully"</span>
+    )
+}
+</code></pre><br /><p>Here we are testing an image <code>loader</code> and making sure that the same data is used for the <code>renderedImage</code> on our <code>view</code>.</p><p><code>renderedImage</code> is a helper on our <code>view</code> which is explictily used for testing, this extension is not available outside of the test bundle.</p><br /><pre><code><span class="keyword">extension</span> <span class="type">MyImageView</span> {
+    <span class="keyword">var</span> renderedImage: <span class="type">Data</span>? {
+        <span class="keyword">self</span>.<span class="property">image</span>?.<span class="call">pngData</span>()
+    }
+}
+</code></pre><br /><p>This test is a little problematic as we have to load the image from our bundle, which could be a performance hit, especially if it is a large image. The image is also stringly typed which opens itself to being changed in the bundle but not in the test.</p><p>We can solve both these problems by making use of an in memory image with an extension on <code>UIImage</code>. This extension will also live in the test bundle (we don't really need it in our app). This method creates a tiny <code>UIImage</code>. It is only 1 point wide and 1 point high, very lightweight and very efficient.</p><br /><pre><code><span class="keyword">extension</span> <span class="type">UIImage</span> {
+    <span class="keyword">static func</span> make(withColor color: <span class="type">UIColor</span>) -&gt; <span class="type">UIImage</span>? {
+        <span class="keyword">let</span> rect = <span class="type">CGRect</span>(x: <span class="number">0</span>, y: <span class="number">0</span>, width: <span class="number">1</span>, height: <span class="number">1</span>)
+        <span class="type">UIGraphicsBeginImageContext</span>(rect.<span class="property">size</span>)
+        <span class="keyword">guard let</span> context = <span class="type">UIGraphicsGetCurrentContext</span>() <span class="keyword">else</span> { <span class="keyword">return nil</span> }
+        context.<span class="call">setFillColor</span>(color.<span class="property">cgColor</span>)
+        context.<span class="call">fill</span>(rect)
+        <span class="keyword">let</span> img = <span class="type">UIGraphicsGetImageFromCurrentImageContext</span>()
+        <span class="type">UIGraphicsEndImageContext</span>()
+        <span class="keyword">return</span> img
+    }
+}
+</code></pre><br /><p>Now we can re-write our test in the following way:</p><br /><pre><code><span class="keyword">func</span> test_loader_completesWithCorrectImage() <span class="keyword">throws</span> {
+    <span class="keyword">let</span> imageData = <span class="keyword">try</span> <span class="type">XCTUnwrap</span>(<span class="type">UIImage</span>.<span class="call">make</span>(withColor: .<span class="dotAccess">red</span>)?.<span class="call">pngData</span>())
+    loader.<span class="call">completeImageLoading</span>(with: imageData)
+    <span class="call">XCTAssertEqual</span>(
+        view.<span class="property">renderedImage</span>, 
+        imageData, 
+        <span class="string">"Expected image for view once image loading completes successfully"</span>
+    )
+}
+</code></pre><br /><p>Note we are using <code>XCTUnwrap</code> to safely unwrap the optional image data that we would have. This is better than force unwrapping, as it will just cause the test to fail and not cause the your tests to crash.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a><a href="https://youtube.com/c/andrewmarmion" class="fa fa-youtube"></a></div></footer></body></html>
