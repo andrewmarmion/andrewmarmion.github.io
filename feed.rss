@@ -1,4 +1,52 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Sat, 11 Sep 2021 16:28:02 +0100</lastBuildDate><pubDate>Sat, 11 Sep 2021 16:28:02 +0100</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/In-memory-images-for-XCTest</guid><title>In memory images for XCTest</title><description>How to speed up tests with images</description><link>https://andrewmarmion.com/posts/In-memory-images-for-XCTest</link><pubDate>Sat, 11 Sep 2021 15:53:00 +0100</pubDate><content:encoded><![CDATA[<p>When testing our code, sometimes it is necessary to test whether we have rendered an image or not. We could add images to our test bundle but this could lead to performance issues with I/O or depending on your setup they could be flaky.</p><p>We can get around this by using an in memory image, and the beauty of this is that we don't need to use the same size image we can use a smaller image making our tests even more light weight.</p><p>So let's see an example of where we could benefit from doing this:</p><br /><pre><code><span class="keyword">func</span> test_loader_completesWithCorrectImage() <span class="keyword">throws</span> {
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Sat, 18 Sep 2021 09:44:54 +0100</lastBuildDate><pubDate>Sat, 18 Sep 2021 09:44:54 +0100</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Markdown-Support-in-SwiftUI</guid><title>Markdown support in SwiftUI</title><description>How to use markdown in SwiftUI</description><link>https://andrewmarmion.com/posts/Markdown-Support-in-SwiftUI</link><pubDate>Sat, 18 Sep 2021 09:13:00 +0100</pubDate><content:encoded><![CDATA[<p>iOS 15 has built markdown support directly into SwiftUI. You can use it quite easily by just writing your markdown string directly into the <code>Text()</code> initializer.</p><p>Here are some examples:</p><pre><code><span class="keyword">struct</span> ContentView: <span class="type">View</span> {
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">20</span>) {
+
+            <span class="type">Text</span>(<span class="string">"This is text without formatting."</span>)
+            
+            <span class="type">Text</span>(<span class="string">"This is **bold** text."</span>)
+            
+            <span class="type">Text</span>(<span class="string">"This is *italic* text."</span>)
+
+            <span class="type">Text</span>(<span class="string">"This is ***bold and italic*** text."</span>)
+
+            <span class="type">Text</span>(<span class="string">"This is ~~strikedthrough~~ text."</span>)
+            
+            <span class="type">Text</span>(<span class="string">"`This is monospaced text`"</span>)
+            
+            <span class="type">Text</span>(<span class="string">"[This is a link that works](https://andrewmarmion.com)"</span>)
+            
+        }
+    }
+}
+</code></pre><br /><p>This produces the following:</p><img src="https://i.imgur.com/6AQVOcU.png" title="Rendering of the above content" /><p>However you may <strong>not</strong> want to use markdown in your text, so how do we opt out of it. Well it is quite easy to do so.</p><ol><li>If you have your string as a variable then SwiftUI will use the <code>Text()</code> initializer where you are using an actual <code>String</code> and it will render it without localization and no markdown. You can read more <a href="https://developer.apple.com/documentation/swiftui/text/init(_:)-9d1g4">here</a>.<ul></ul></li></ol><br /><ol start="2"><li>If you use <code>Text(verbatim:)</code> then it will use no localization and no markdown. You can read more <a href="https://developer.apple.com/documentation/swiftui/text/init(verbatim:)">here</a>.</li></ol><br /><ol start="3"><li>If you want to use localization but no markdown then you need to create a localizedString using <code>String(localized:)</code> and then pass that to the <code>Text()</code>. You can read more <a href="https://developer.apple.com/documentation/swift/string/3867985-init">here</a>.<ul></ul></li></ol><br /><pre><code><span class="keyword">struct</span> ContentView: <span class="type">View</span> {
+
+    <span class="keyword">let</span> stringVariable = <span class="string">"This is not *markdown*"</span>
+
+    <span class="keyword">let</span> localizedString = <span class="type">String</span>(localized: <span class="string">"This is not *markdown*"</span>)
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">20</span>) {
+
+            <span class="comment">// 1
+            // No localization no markdown
+            // https://developer.apple.com/documentation/swiftui/text/init(_:)-9d1g4</span>
+            <span class="type">Text</span>(stringVariable)
+
+            <span class="comment">// 2
+            // No localization no markdown
+            // https://developer.apple.com/documentation/swiftui/text/init(verbatim:)</span>
+            <span class="type">Text</span>(verbatim: <span class="string">"This is not *markdown*"</span>)
+
+            <span class="comment">// 3
+            // This is a localized string but no markdown
+            // https://developer.apple.com/documentation/swift/string/3867985-init</span>
+            Text(localizedString)
+        }
+    }
+}
+</code></pre><br /><p>This produces the following:</p><img src="https://i.imgur.com/giViKxt.png" title="Rendering of the above content" /><br /><p>This post is based off an <a href="https://stackoverflow.com/a/69202489/5508175">answer</a> that I gave on StackOverflow.</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/In-memory-images-for-XCTest</guid><title>In memory images for XCTest</title><description>How to speed up tests with images</description><link>https://andrewmarmion.com/posts/In-memory-images-for-XCTest</link><pubDate>Sat, 11 Sep 2021 15:53:00 +0100</pubDate><content:encoded><![CDATA[<p>When testing our code, sometimes it is necessary to test whether we have rendered an image or not. We could add images to our test bundle but this could lead to performance issues with I/O or depending on your setup they could be flaky.</p><p>We can get around this by using an in memory image, and the beauty of this is that we don't need to use the same size image we can use a smaller image making our tests even more light weight.</p><p>So let's see an example of where we could benefit from doing this:</p><br /><pre><code><span class="keyword">func</span> test_loader_completesWithCorrectImage() <span class="keyword">throws</span> {
     <span class="keyword">let</span> imageData = <span class="keyword">try</span> <span class="type">XCTUnwrap</span>(<span class="type">UIImage</span>(named: <span class="string">"test-image"</span>)?.<span class="call">pngData</span>())
     loader.<span class="call">completeImageLoading</span>(with: imageData)
     <span class="call">XCTAssertEqual</span>(
