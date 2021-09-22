@@ -1,9 +1,0 @@
-{
-  "applinks": {
-      "details": [
-           {
-             "appIDs": [ "CL3UXXS6WU.com.andrewmarmion.Test.Keeboard.watchkitapp.watchkitextension" ],
-             "components": [ { "/": "/flicktype/*" } ]
-           },
-   }
-}
