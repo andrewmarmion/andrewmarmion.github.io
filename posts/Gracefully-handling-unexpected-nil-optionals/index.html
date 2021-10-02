@@ -1,0 +1,29 @@
+<!DOCTYPE html><html lang="en"><head><title>Gracefully handling unexpected nil optionals | Andrew Marmion</title><meta name="twitter:title" content="Gracefully handling unexpected nil optionals | Andrew Marmion"/><meta name="og:title" content="Gracefully handling unexpected nil optionals | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">Gracefully handling unexpected nil optionals</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/article">Article</a></li><li><a class="tag variant-2" href="/tags/optionals">Optionals</a></li></ul><p class="published">Published on 2 October 2021</p></div><div class="content"><p>Quite often when dealing with UIKit we are forced to deal with optionals that we know should not be optional.</p><p>For example in the SceneDelegate (or AppDelegate) depending on your setup we have the following:</p><br /><pre><code><span class="keyword">class</span> SceneDelegate: <span class="type">UIResponder</span>, <span class="type">UIWindowSceneDelegate</span> {
+
+    <span class="keyword">var</span> window: <span class="type">UIWindow</span>?
+    
+    <span class="keyword">func</span> scene(<span class="keyword">_</span> scene: <span class="type">UIScene</span>, willConnectTo session: <span class="type">UISceneSession</span>, options connectionOptions: <span class="type">UIScene</span>.<span class="type">ConnectionOptions</span>) {
+        <span class="keyword">guard let</span> windowScene = (scene <span class="keyword">as</span>? <span class="type">UIWindowScene</span>) <span class="keyword">else</span> { <span class="keyword">return</span> }
+
+        window = <span class="type">UIWindow</span>(windowScene: windowScene)
+        <span class="keyword">let</span> navigationController = <span class="type">UINavigationController</span>(rootViewController: <span class="type">ViewController</span>())
+        window?.<span class="property">rootViewController</span> = navigationController
+        window?.<span class="call">makeKeyAndVisible</span>()
+    }
+} 
+</code></pre><br /><p>When we come to use the <code>window</code> we have to use optional chaining to access properties on it <code>window?.makeKeyAndVisible()</code>. What happens if the <code>window</code> is actually nil?</p><p>I know it is unlikely from this <em>contrived</em> example that the window could be nil. However if we wanted to make sure that it wasn't nil we would have to add some boiler plate to make sure that we unwrapped the optional properly and then handle the case that it is nil.</p><pre><code><span class="keyword">guard let</span> window = window <span class="keyword">else</span> { 
+    <span class="comment">// Handle the nil value</span>
+    <span class="keyword">return</span> 
+}
+window.<span class="property">rootViewController</span> = navigationController
+window.<span class="call">makeKeyAndVisible</span>()
+</code></pre><p>That is a lot of code to write everytime we want to handle the nil value. We might not want to handle the nil value, instead we might just want to log it. In most of the instances when this could happen, getting a nil value isn't going to crash the application however we don't really have a compile time check that the value is not nil. We could force unwrap the optional but that isn't going to give a good user experience, and it still doesn't give us a compile time check.</p><p>One extension that we have been using at work to track these optionals that shouldn't be nil is the following:</p><br /><pre><code><span class="keyword">extension</span> <span class="type">Optional</span> {
+    <span class="keyword">func</span> trackIfNil(file: <span class="type">StaticString</span> = #filePath, line: <span class="type">UInt</span> = <span class="keyword">#line</span>) -&gt; <span class="type">Self</span> {
+        <span class="keyword">if self</span> == <span class="keyword">nil</span> {
+            <span class="type">Logger</span>.<span class="property">shared</span>.<span class="call">unexpectedNilValueFound</span>(at: file, on: line)
+        }
+        <span class="keyword">return self</span>
+    }
+}
+</code></pre><br /><p>This extension checks to see if the value is nil, if it is nil then it passes that information on to our logging and we can then track if something that we thought would not be optional is actually nil. It returns the optional value as we don't want to <em>change</em> the behaviour.</p><p>So we can use the extension in the following way:</p><br /><pre><code>window?.<span class="call">trackIfNil</span>().<span class="call">makeKeyAndVisible</span>()
+</code></pre><br /><p>Although this is quite crude and it has helped us catch a few issues in production that we otherwise wouldn't have been able to solve.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a><a href="https://youtube.com/c/andrewmarmion" class="fa fa-youtube"></a></div></footer></body></html>
