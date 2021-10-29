@@ -1,0 +1,146 @@
+<!DOCTYPE html><html lang="en"><head><title>Dispatching to the main queue | Andrew Marmion</title><meta name="twitter:title" content="Dispatching to the main queue | Andrew Marmion"/><meta name="og:title" content="Dispatching to the main queue | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">Dispatching to the main queue</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/article">Article</a></li><li><a class="tag variant-1" href="/tags/dispatchqueue">DispatchQueue</a></li></ul><p class="published">Published on 29 October 2021</p></div><div class="content"><p>When I first started writing iOS apps, I was guilty of doing everything inside one ViewController, leading to the infamous MVC (massive view controller). One thing that we can do to improve this is to separate the concerns and decouple the logic.</p><p>Let's take a look at a very simple ViewController that could easily cause problems if left unchecked.</p><pre><code><span class="keyword">struct</span> Person: <span class="type">Decodable</span> {
+    <span class="keyword">let</span> name: <span class="type">String</span>
+}
+
+<span class="keyword">class</span> ViewController: <span class="type">UIViewController</span> {
+
+    <span class="keyword">var</span> label: <span class="type">UILabel</span> = .<span class="keyword">init</span>()
+
+    <span class="keyword">override func</span> viewDidLoad() {
+        <span class="keyword">super</span>.<span class="call">viewDidLoad</span>()
+        <span class="type">URLSession</span>.<span class="property">shared</span>.<span class="call">dataTask</span>(with: <span class="call">ourURL</span>()) { [<span class="keyword">weak self</span>] data, response, error <span class="keyword">in
+            if let</span> error = error {
+                <span class="call">print</span>(error)
+                <span class="keyword">return</span>
+            }
+
+            <span class="keyword">guard let</span> data = data <span class="keyword">else</span> {
+                <span class="call">print</span>(<span class="string">"Missing data"</span>)
+                <span class="keyword">return</span>
+            }
+
+            <span class="keyword">do</span> {
+                <span class="keyword">let</span> person = <span class="keyword">try</span> <span class="type">JSONDecoder</span>().<span class="call">decode</span>(<span class="type">Person</span>.<span class="keyword">self</span>, from: data)
+                <span class="type">DispatchQueue</span>.<span class="property">main</span>.<span class="call">async</span> {
+                    <span class="keyword">self</span>?.<span class="property">label</span>.<span class="property">text</span> = person.<span class="property">name</span>
+                }
+            } <span class="keyword">catch</span> {
+                <span class="call">print</span>(error)
+            }
+
+        }.<span class="call">resume</span>()
+    }
+}
+</code></pre><br /><p>Now I am aware that this is not a very complicated ViewController, but there is a lot happening in this ViewController. Firstly, it is making a network request, so it is tightly coupled to <code>URLSession</code>. Secondly, the result from our network call has to be dispatched to the main queue otherwise we would be trying to update the UI from a background thread and this is not a good thing to do. In fact in Xcode 13, your application will crash if you attempt to do this and it will show you some nice purple warnings.</p><h2>So how can we get around these problems?</h2><p>Let's start with abstracting away the dependency on <code>URLSession</code>, and once we have done that we will turn our attention to dealing with the <code>DispatchQueue</code>.</p><p>Firstly, I create a protocol for the network request called <code>PersonLoader</code>. This allows me to use different classes that conform to the protocol, so I could easily swap it out with a mock.</p><pre><code><span class="keyword">protocol</span> PersonLoader {
+    <span class="keyword">typealias</span> Result = <span class="type">Swift</span>.<span class="type">Result</span>&lt;<span class="type">Person</span>, <span class="type">Error</span>&gt;
+    <span class="keyword">func</span> getPerson(completion: <span class="keyword">@escaping</span> (<span class="type">Result</span>) -&gt; <span class="type">Void</span>)
+}
+
+</code></pre><br /><p>Here is our <code>RemotePersonLoader</code>.</p><br /><pre><code><span class="keyword">final class</span> RemotePersonLoader: <span class="type">PersonLoader</span> {
+
+    <span class="keyword">typealias</span> Result = <span class="type">PersonLoader</span>.<span class="type">Result</span>
+
+    <span class="keyword">struct</span> InvalidData: <span class="type">Error</span> {}
+
+    <span class="keyword">func</span> getPerson(completion: <span class="keyword">@escaping</span> (<span class="type">Result</span>) -&gt; <span class="type">Void</span>) {
+        <span class="type">URLSession</span>.<span class="property">shared</span>.<span class="call">dataTask</span>(with: <span class="call">ourURL</span>()) { data, response, error <span class="keyword">in
+            if let</span> error = error {
+                <span class="call">completion</span>(.<span class="call">failure</span>(error))
+                <span class="keyword">return</span>
+            }
+
+            <span class="keyword">guard let</span> data = data <span class="keyword">else</span> {
+                <span class="call">completion</span>(.<span class="call">failure</span>(<span class="type">InvalidData</span>()))
+                <span class="keyword">return</span>
+            }
+
+            <span class="keyword">do</span> {
+                <span class="keyword">let</span> person = <span class="keyword">try</span> <span class="type">JSONDecoder</span>().<span class="call">decode</span>(<span class="type">Person</span>.<span class="keyword">self</span>, from: data)
+                <span class="call">completion</span>(.<span class="call">success</span>(person))
+            } <span class="keyword">catch</span> {
+                <span class="call">completion</span>(.<span class="call">failure</span>(error))
+            }
+        }
+        .<span class="call">resume</span>()
+    }
+}
+</code></pre><br /><p>This is basically the same code that we had in our ViewController, but now it lives in its own class. This means that when we construct our ViewController we need to inject this dependency. We could use constructor injection or property injection.</p><p>I am going to use constructor injection as my ViewController is constructed programatically, but if you are using Storyboards for your ViewController then you may wish to use property injection.</p><br /><pre><code><span class="keyword">class</span> ViewController: <span class="type">UIViewController</span> {
+
+    <span class="keyword">var</span> label: <span class="type">UILabel</span> = .<span class="keyword">init</span>()
+    <span class="keyword">var</span> personLoader: <span class="type">PersonLoader</span>!
+
+    <span class="keyword">convenience init</span>(personLoader: <span class="type">PersonLoader</span>) {
+        <span class="keyword">self</span>.<span class="keyword">init</span>(nibName: <span class="keyword">nil</span>, bundle: <span class="keyword">nil</span>)
+        <span class="keyword">self</span>.<span class="property">personLoader</span> = personLoader
+    }
+
+    <span class="keyword">override func</span> viewDidLoad() {
+        <span class="keyword">super</span>.<span class="call">viewDidLoad</span>()
+
+        personLoader.<span class="call">getPerson</span> { [<span class="keyword">weak self</span>] result <span class="keyword">in</span>
+            <span class="type">DispatchQueue</span>.<span class="property">main</span>.<span class="call">async</span> {
+                <span class="keyword">switch</span> result {
+                <span class="keyword">case let</span> .<span class="call">success</span>(person):
+                    <span class="keyword">self</span>?.<span class="property">label</span>.<span class="property">text</span> = person.<span class="property">name</span>
+
+                <span class="keyword">case let</span> .<span class="call">failure</span>(error):
+                    <span class="call">print</span>(error)
+                }
+            }
+        }
+    }
+}
+</code></pre><br /><p>So in the ViewController we have used a <code>convenience init</code> to create our ViewController this means that we need to make sure that we pass the <code>PersonLoader</code> dependency when we construct our ViewController</p><br /><pre><code><span class="keyword">let</span> viewController = <span class="type">ViewController</span>(personLoader: <span class="type">RemotePersonLoader</span>())
+</code></pre><br /><p>However we haven't tackled the <code>DispatchQueue</code>, currently that is inside our ViewController and it is not ideal. If we were to mock our <code>PersonLoader</code> using <code>MockPersonLoader</code> then we may have to <strong>kick</strong> the RunLoop when we are performing tests. Let's look at a way to remove <code>DispatchQueue</code> from our ViewController and give us control of our tests. We can do this by using the Decorator pattern. This pattern allows us to <em>decorate</em> our class so that it gains some extra abilities but retains the existing ones.</p><br /><pre><code><span class="keyword">final class</span> MainQueueDispatchDecorator&lt;T&gt; {
+    <span class="keyword">private let</span> decoratee: <span class="type">T</span>
+    
+    <span class="keyword">init</span>(decoratee: <span class="type">T</span>) {
+        <span class="keyword">self</span>.<span class="property">decoratee</span> = decoratee
+    }
+    
+    <span class="keyword">func</span> dispatch(completion: <span class="keyword">@escaping</span> () -&gt; <span class="type">Void</span>) {
+        <span class="keyword">guard</span> <span class="type">Thread</span>.<span class="property">isMainThread</span> <span class="keyword">else</span> {
+            <span class="keyword">return</span> <span class="type">DispatchQueue</span>.<span class="property">main</span>.<span class="call">async</span>(execute: completion)
+        }
+        
+        <span class="call">completion</span>()
+    }
+}
+</code></pre><br /><p>The class <code>MainQueueDispatchDecorator</code> takes a generic and allows us to <em>decorate</em> what is passed as the generic and to call <code>dispatch(completion:)</code>, it does this by first checking that it is on the main thread (there is no point switching to the main thread if it is already in it 😉) and then calling the completion.</p><p>Here is how we use it. We first create an extension that conforms to our protocol (in this case <code>PersonLoader</code>), we make sure that <code>T</code> our generic is a <code>PersonLoader</code> and then we implement the <code>getPerson</code> call which inturn calls the <code>getPerson</code> on our decorated class, this then calls <code>dispatch</code> calling our completion.</p><br /><pre><code><span class="keyword">extension</span> <span class="type">MainQueueDispatchDecorator</span>: <span class="type">PersonLoader</span> <span class="keyword">where</span> <span class="type">T</span> == <span class="type">PersonLoader</span> {
+    <span class="keyword">func</span> getPerson(completion: <span class="keyword">@escaping</span> (<span class="type">PersonLoader</span>.<span class="type">Result</span>) -&gt; <span class="type">Void</span>) {
+        decoratee.<span class="call">getPerson</span> { [<span class="keyword">weak self</span>] result <span class="keyword">in
+            self</span>?.<span class="call">dispatch</span> { completion (result) }
+        }
+    }
+}
+
+</code></pre><br /><p>This is how we now use it.</p><pre><code><span class="keyword">let</span> viewController = <span class="type">ViewController</span>(
+    personLoader: <span class="type">MainQueueDispatchDecorator</span>(
+        decoratee: <span class="type">RemotePersonLoader</span>()
+    )
+)
+</code></pre><br /><p>And we can update our ViewController to the following. Notice that we no longer need to dispatch to the main queue, as it is taken care of by the <code>MainQueueDispatchDecorator</code>.</p><br /><pre><code><span class="keyword">class</span> ViewController: <span class="type">UIViewController</span> {
+
+    <span class="keyword">var</span> label: <span class="type">UILabel</span> = .<span class="keyword">init</span>()
+    <span class="keyword">var</span> personLoader: <span class="type">PersonLoader</span>!
+
+    <span class="keyword">convenience init</span>(personLoader: <span class="type">PersonLoader</span>) {
+        <span class="keyword">self</span>.<span class="keyword">init</span>(nibName: <span class="keyword">nil</span>, bundle: <span class="keyword">nil</span>)
+        <span class="keyword">self</span>.<span class="property">personLoader</span> = personLoader
+    }
+    
+    <span class="keyword">override func</span> viewDidLoad() {
+        <span class="keyword">super</span>.<span class="call">viewDidLoad</span>()
+
+        personLoader.<span class="call">getPerson</span> { [<span class="keyword">weak self</span>] result <span class="keyword">in
+            switch</span> result {
+            <span class="keyword">case let</span> .<span class="call">success</span>(person):
+                <span class="keyword">self</span>?.<span class="property">label</span>.<span class="property">text</span> = person.<span class="property">name</span>
+
+            <span class="keyword">case let</span> .<span class="call">failure</span>(error):
+                <span class="call">print</span>(error)
+            }
+        }
+    }
+}
+</code></pre><br /><h2>So why is this a benefit?</h2><p>Well we have now decoupled the networking from the ViewController. The ViewController no longer cares what delivers the Person to it. It could a <code>LocalPersonLoader</code>, <code>CoreDataPersonLoader</code> or even a <code>MockPersonLoader</code>. This means that we can use any implementation that we want to.</p><p>Secondly we have removed the reliance on dispatching to the main queue. Maybe we need to do some computationally expensive operation before using our downloaded <code>Person</code> and we don't want to perform that on the main queue. Similarly dispatching on the main queue can cause problems in tests, where we need to <em>kick</em> the RunLoop so that the tests execute properly. So by abstracting it away using the decorator pattern it means that we can avoid these issues.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew" class="fa fa-twitter"></a><a href="https://github.com/andrewmarmion" class="fa fa-github"></a><a href="https://linkedin.com/in/andrewmarmion" class="fa fa-linkedin"></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile" class="fa fa-stack-overflow"></a><a href="https://youtube.com/c/andrewmarmion" class="fa fa-youtube"></a></div></footer></body></html>
