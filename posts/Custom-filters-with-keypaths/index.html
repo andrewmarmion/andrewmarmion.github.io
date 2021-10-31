@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head><title>Custom filters with KeyPaths | Andrew Marmion</title><meta name="twitter:title" content="Custom filters with KeyPaths | Andrew Marmion"/><meta name="og:title" content="Custom filters with KeyPaths | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li><li><a href="/Reading">Reading</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">Custom filters with KeyPaths</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/article">Article</a></li><li><a class="tag variant-1" href="/tags/filter">Filter</a></li><li><a class="tag variant-2" href="/tags/keypath">KeyPath</a></li><li><a class="tag variant-5" href="/tags/swift">Swift</a></li><li><a class="tag variant-6" href="/tags/tdd">TDD</a></li></ul><p class="published">Published on 31 October 2021</p></div><div class="content"><p>Last night, I was able to watch <a href="https://twitter.com/qcoding">Jon Reid's</a> live stream on <a href="https://www.twitch.tv/qcoding">Twitch</a>, usually I miss it and have to watch it on catch-up on his <a href="https://www.youtube.com/c/qualitycoding">YouTube</a> channel. If you haven't watched Jon or don't know who he is, he is a bit of a guru when it comes to Test Driven Development. He even has a book available about unit testing: <a href="https://pragprog.com/titles/jrlegios/ios-unit-testing-by-example/">iOS Unit Testing by Example</a>, which I highly recommend.</p><p>Jon is currently test driving a solution to analyze data that he collected. It is a really interesting series of videos. He follows the TDD mantra of <strong>red-green-refactor</strong> to the letter and is never to busy to answer a question from those that are watching.</p><p>He has an <code>Entry</code> struct that looks something like this:</p><pre><code><span class="keyword">struct</span> Entry {
+    <span class="keyword">var</span> problems: [<span class="type">String</span>]
+    <span class="keyword">var</span> desires: [<span class="type">String</span>]
+    <span class="keyword">var</span> killerFeatures: [<span class="type">String</span>]
+    <span class="keyword">var</span> weight: <span class="type">Int</span>
+}
+</code></pre><br /><p>These Entries are created from a JSON data set, and he is trying to calculate a score from their weightings. Unfortunately I cannot explain in detail the full reasons as to the why of the calculation, Jon is better at doing that so head over to his YouTube channel and get caught up. At the end of last night's session, he was trying to come up with a refactor of code that was used in three places. This is what he had in his test helper file:</p><pre><code><span class="keyword">func</span> scoreProblems(<span class="keyword">_</span> problem: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    entries
+        .<span class="call">filter</span> { $0.<span class="property">problems</span>.<span class="call">contains</span>(problem) }
+        .<span class="call">reduce</span>(<span class="number">0</span>) { result, entry -&gt; <span class="type">Int</span> <span class="keyword">in</span>
+            result + entry.<span class="property">weight</span>
+        }
+}
+
+<span class="keyword">func</span> scoreDesires(<span class="keyword">_</span> desire: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    entries
+        .<span class="call">filter</span> { $0.<span class="property">desires</span>.<span class="call">contains</span>(desire) }
+        .<span class="call">reduce</span>(<span class="number">0</span>) { result, entry -&gt; <span class="type">Int</span> <span class="keyword">in</span>
+            result + entry.<span class="property">weight</span>
+        }
+}
+
+<span class="keyword">func</span> scoreKillerFeatures(<span class="keyword">_</span> killerFeature: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    entries
+        .<span class="call">filter</span> { $0.<span class="property">killerFeatures</span>.<span class="call">contains</span>(killerFeature) }
+        .<span class="call">reduce</span>(<span class="number">0</span>) { result, entry -&gt; <span class="type">Int</span> <span class="keyword">in</span>
+            result + entry.<span class="property">weight</span>
+        }
+}
+</code></pre><br /><p>As you can see these functions are almost identical. Their only difference is the property that they are filtering on. Jon mentioned at the end of the video that he thought that KeyPaths would be way to solve it, so I took my queue from him and set out to find a possible solution.</p><p>The solution I present below may not be the best solution, I didn't spend a lot of time on it, but it is quite readable and it avoids the duplicated code that we see above. So code that is easier to read and abstracts implmentation details away is good in my book.</p><h2>My Solution</h2><p>The crux of this problem is the line <code>.filter { $0.&lt;property&gt;.contains(killerFeature) }</code>. We want some way to filter the Entries so that only the property that we want is used.</p><p>My initial thought was I needed to create a custom filter that uses the KeyPath. I jumped across to <a href="https://twitter.com/johnsundell">John Sundell's</a> blog and read the following two posts <a href="https://www.swiftbysundell.com/articles/the-power-of-key-paths-in-swift/">The power of key paths in Swift</a> and <a href="https://swiftbysundell.com/articles/custom-query-functions-using-key-paths/">Creating custom query functions using key paths</a>. This was enough to get me started, and after some compiler wrangling I came up with:</p><br /><pre><code><span class="keyword">extension</span> <span class="type">Sequence</span> {
+    <span class="keyword">func</span> contains&lt;T: <span class="type">Equatable</span>&gt;(by keyPath: <span class="type">KeyPath</span>&lt;<span class="type">Element</span>, [<span class="type">T</span>]&gt;, search: <span class="type">T</span>) -&gt; [<span class="type">Element</span>] {
+        <span class="call">filter</span> { element <span class="keyword">in</span>
+            element[keyPath: keyPath].<span class="call">contains</span>(search)
+        }
+    }
+}
+
+</code></pre><br /><p>Now the name of the function is not the best, perhaps <code>containsFilter</code> would be better but it is better to get something working and then refactor it later so that it makes more sense.</p><p>This is an extension on <code>Sequence</code>, the function takes a generic <code>T</code> that is <code>Equatable</code>. It also requires that the KeyPath's value conform to <code>T</code> and the search parameter too. I then just perform a filter on the but instead of using <code>$0.&lt;property&gt;</code> I can now use the KeyPath.</p><p>We can use this function in the following way:</p><br /><pre><code>entries.<span class="call">contains</span>(by: \.<span class="property">problems</span>, search: problem)
+</code></pre><br /><p>So I can now update the <code>score</code> functions to use this:</p><br /><pre><code><span class="keyword">func</span> scoreProblems(<span class="keyword">_</span> problem: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    entries
+        .<span class="call">contains</span>(by: \.<span class="property">problems</span>, search: problem)
+        .<span class="call">reduce</span>(<span class="number">0</span>) { result, entry -&gt; <span class="type">Int</span> <span class="keyword">in</span>
+            result + entry.<span class="property">weight</span>
+        }
+}
+
+</code></pre><br /><p>Clearly this reads better (though my naming still sucks), but we are still repeating the code three times though in a more refactorable way.</p><p>My next step was to encapsulate the duplicate code into a single function. Some more compiler wrangling and I came up with the following:</p><br /><pre><code><span class="keyword">func</span> score(<span class="keyword">_</span> keyPath: <span class="type">KeyPath</span>&lt;<span class="type">Entry</span>, [<span class="type">String</span>]&gt;, <span class="keyword">for</span> searchTerm: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    entries
+        .<span class="call">contains</span>(by: keyPath, search: searchTerm)
+        .<span class="call">reduce</span>(<span class="number">0</span>) { result, entry -&gt; <span class="type">Int</span> <span class="keyword">in</span>
+            result + entry.<span class="property">weight</span>
+        }
+}
+</code></pre><br /><p>As we are using this in a very specific way we don't need to make it generic. We know that we want it to be for Entries and we know that we are searching arrays of Strings to see if they contain the search term. Notice how the function body is the same as what we had written above, but now we can use this function to calculate the score for each of the different properties.</p><p>Using this <code>score</code> function our original three functions become:</p><br /><pre><code><span class="keyword">func</span> scoreProblems(<span class="keyword">_</span> problem: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    <span class="call">score</span>(\.<span class="property">problems</span>, for: problem)
+}
+
+<span class="keyword">func</span> scoreDesires(<span class="keyword">_</span> desire: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    <span class="call">score</span>(\.<span class="property">desires</span>, for: desire)
+}
+
+<span class="keyword">func</span> scoreKillerFeature(<span class="keyword">_</span> killerFeature: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    <span class="call">score</span>(\.<span class="property">killerFeatures</span>, for: killerFeature)
+}
+
+</code></pre><br /><p>These are now much more readable. It is really clear what each of these does.</p><p>But my naming of the <code>contains</code> function on the extension of <code>Sequence</code> is still shocking. Let's tidy that up, cause it really needs it.</p><br /><pre><code><span class="keyword">extension</span> <span class="type">Sequence</span> {
+    <span class="keyword">func</span> filter&lt;T:<span class="type">Equatable</span>&gt;(by keyPath: <span class="type">KeyPath</span>&lt;<span class="type">Element</span>, [<span class="type">T</span>]&gt;, containing searchTerm: <span class="type">T</span>) -&gt; [<span class="type">Element</span>] {
+        <span class="call">filter</span> { element <span class="keyword">in</span>
+            element[keyPath: keyPath].<span class="call">contains</span>(searchTerm)
+        }
+    }
+}
+</code></pre><br /><p>So I chose to rename the function to <code>filter</code> this is because that is what this function is doing and it makes more sense for it say that. I also changed the name of the second parameter to <code>searchTerm</code>, but I have hidden it by using the external parameter <code>containing</code>. I feel that this makes the function read better <strong>filter by keypath containing searchTerm</strong>. It is now very clear what this function does. I did ponder over using <em>contains</em> or <em>containing</em>, and I chose the later because I thought it made the function read better.</p><p>And we use it in our <code>score</code> function in the following way:</p><p>&lt; br /&gt;</p><pre><code><span class="keyword">func</span> score(<span class="keyword">_</span> keyPath: <span class="type">KeyPath</span>&lt;<span class="type">Entry</span>, [<span class="type">String</span>]&gt;, <span class="keyword">for</span> searchTerm: <span class="type">String</span>) -&gt; <span class="type">Int</span> {
+    entries
+        .<span class="call">filter</span>(by: keyPath, containing: searchTerm)
+        .<span class="call">reduce</span>(<span class="number">0</span>) { result, entry -&gt; <span class="type">Int</span> <span class="keyword">in</span>
+            result + entry.<span class="property">weight</span>
+        }
+}
+</code></pre><br /><p>I <a href="https://twitter.com/IamThatAndrew/status/1454533963222028289?s=20">tweeted</a> my solution to Jon and he thanked me for it. Time will tell if he uses it, or if he comes up with something even better (which I am sure he will). You will notice in my solution (if you looked at the tweet) that I used a much more focused extension on Sequence along with the horrible naming. Let's gloss over the bad naming as we have already dealt with that above and look at what I presented to him, I am only going to look at the extension as the other code is effectively the same.</p><br /><pre><code><span class="keyword">extension</span> <span class="type">Sequence</span> <span class="keyword">where</span> <span class="type">Element</span> == <span class="type">Entry</span> {
+    <span class="keyword">func</span> contains(by keyPath: <span class="type">KeyPath</span>&lt;<span class="type">Element</span>, [<span class="type">String</span>]&gt;, search: <span class="type">String</span>) -&gt; [<span class="type">Element</span>] {
+        <span class="call">filter</span> { element <span class="keyword">in</span>
+            element[keyPath: keyPath].<span class="call">contains</span>(search)
+        }
+    }
+}
+</code></pre><br /><p>Here I have removed the generic <code>T</code> from the function replacing that with the actual type that is used: <code>String</code>, and I have constrained the extension to only operate on Sequences whose <code>Element</code> is equal to <code>Entry</code>.</p><p><strong>Why did I remove the generic and constrain the extension?</strong></p><p>I removed it because sometimes we can make code too general. Do I really want to have this particular function available throughout my codebase (in this case test-suite) and use it on any Sequence that I have? Probably not. By adding the constraint on the extension it means that it will only work with Elements whose type is <code>Entry</code>. By removing the generic, it further constrains the function to only be used when the KeyPath's value is an array of Strings and the search term is also a <code>String</code>.</p><p>I would also go one step further and probably mark the extension as <code>private</code> so that it can only be used in its file. Similarly, not having these constraints makes the extension harder to read and reason about for someone who is unfamiliar with the code. KeyPaths are an unfamiliar topic for most, I even had to read a few blog posts before I could come up with my solution, so removing as much complexity that doesn't need to be there can help reduce the cognitive load.</p><p>If in the future we need to remove these constraints we can. It is not difficult to make this function more generic. But until we need to do that we should probably leave it constrained. It is very over easy to engineer a solution. Is it a problem to use the more generic extension? No not at all. At the end of the day it boils down to what you are happy with and what you want in your codebase.</p></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2021</p><div><a href="https://twitter.com/IamThatAndrew"><i class="fa fa-twitter"></i></a><a href="https://github.com/andrewmarmion"><i class="fa fa-github"></i></a><a href="https://linkedin.com/in/andrewmarmion"><i class="fa fa-linkedin"></i></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile"><i class="fa fa-stack-overflow"></i></a><a href="https://youtube.com/c/andrewmarmion"><i class="fa fa-youtube"></i></a></div></footer></body></html>
