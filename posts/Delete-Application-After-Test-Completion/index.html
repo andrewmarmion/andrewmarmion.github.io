@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><title>How to delete an application after a UI Test in Xcode | Andrew Marmion</title><meta name="twitter:title" content="How to delete an application after a UI Test in Xcode | Andrew Marmion"/><meta name="og:title" content="How to delete an application after a UI Test in Xcode | Andrew Marmion"/><meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/><link rel="stylesheet" href="/styles.css"/><link rel="shortcut icon" type="image/png" href="/Images/favicon.png"/></head><body class="item-page"><header><div class="wrapper"><a class="site-name" href="/">Andrew Marmion</a><p class="description">Coding carefully, deliberately, and with humility.</p><nav><ul><li><a href="/About">About</a></li><li><a class="selected" href="/posts">Posts</a></li><li><a href="/List">List</a></li></ul></nav></div></header><div class="wrapper"><article><div><div class="title">How to delete an application after a UI Test in Xcode</div><ul class="tag-list"><li><a class="tag variant-0" href="/tags/article">Article</a></li><li><a class="tag variant-6" href="/tags/tests">Tests</a></li><li><a class="tag variant-6" href="/tags/ui-tests">UI Tests</a></li><li><a class="tag variant-7" href="/tags/xcode">Xcode</a></li></ul><p class="published">Published on 12 January 2022</p></div><div class="content"><p>Occasionally you will need to delete an application after a UI test, if you are running your tests as part of a CI/CD process this can be problematic to do, as you cannot manually go into simulator and delete the application between tests.</p><p>However it is possible to write a helper that will do just that.</p><p>The following code mimics a user long pressing on the app icon and then selecting the buttons in the system alerts to delete the application. It is not a quick process, because all told it could run for almost 11 seconds but I have found it useful in the case where I have needed to delete the application between UI tests.</p><br /><pre><code><span class="keyword">import</span> XCTest
+
+<span class="keyword">public class</span> Springboard {
+    <span class="keyword">private static let</span> springboard = <span class="type">XCUIApplication</span>(bundleIdentifier: <span class="string">"com.apple.springboard"</span>)
+    
+    <span class="keyword">private static let</span> <span class="type">REMOVE_APP</span> = <span class="string">"Remove App"</span>
+    <span class="keyword">private static let</span> <span class="type">DELETE_APP</span> = <span class="string">"Delete App"</span>
+    <span class="keyword">private static let</span> <span class="type">DELETE</span> = <span class="string">"Delete"</span>
+    
+    <span class="keyword">private init</span>() {}
+    
+    <span class="keyword">public class func</span> deleteApp(<span class="keyword">_</span> name: <span class="type">String</span>) {
+        <span class="comment">// Terminate the application</span>
+        <span class="type">XCUIApplication</span>().<span class="call">terminate</span>()
+        
+        springboard.<span class="call">activate</span>()
+        
+        <span class="comment">// Find the appIcon in the springboard's list of icons</span>
+        <span class="keyword">let</span> appIcon = springboard.<span class="property">icons</span>[name]
+        
+        <span class="comment">// If it exists then we long press it to bring up the context menu</span>
+        <span class="keyword">guard</span> appIcon.<span class="property">exists</span> <span class="keyword">else</span> { <span class="keyword">return</span> }
+        appIcon.<span class="call">press</span>(forDuration: <span class="number">1.3</span>)
+        
+        <span class="comment">// Tap the "Remove App" button on the context menu</span>
+        <span class="keyword">_</span> = springboard.<span class="property">buttons</span>[<span class="type">REMOVE_APP</span>].<span class="call">waitForExistence</span>(timeout: <span class="number">3</span>)
+        springboard.<span class="property">buttons</span>[<span class="type">REMOVE_APP</span>].<span class="call">tap</span>()
+        
+        <span class="comment">// Tap the "Delete App" button on the alert</span>
+        <span class="keyword">_</span> = springboard.<span class="property">alerts</span>.<span class="property">buttons</span>[<span class="type">DELETE_APP</span>].<span class="call">waitForExistence</span>(timeout: <span class="number">3</span>)
+        springboard.<span class="property">buttons</span>[<span class="type">DELETE_APP</span>].<span class="call">tap</span>()
+        
+        <span class="comment">// Tap the "Delete" button on the alert</span>
+        <span class="keyword">_</span> = springboard.<span class="property">alerts</span>.<span class="property">buttons</span>[<span class="type">DELETE</span>].<span class="call">waitForExistence</span>(timeout: <span class="number">3</span>)
+        springboard.<span class="property">buttons</span>[<span class="type">DELETE</span>].<span class="call">tap</span>()
+        
+        <span class="comment">// Tap home to stop all the icons from wiggling</span>
+        <span class="type">XCUIDevice</span>.<span class="property">shared</span>.<span class="call">press</span>(.<span class="dotAccess">home</span>)
+    }
+}
+</code></pre><br /><p>Just add the following to your <code>tearDown</code> method of choice.</p><br /><pre><code><span class="type">Springboard</span>.<span class="call">deleteApp</span>(<span class="string">"MyAwesomeApp"</span>) <span class="comment">// use your app name of course 😉</span>
+</code></pre></div></article></div><footer><p>Generated using <a href="https://github.com/johnsundell/publish">Publish</a></p><p>Copyright © Andrew Marmion 2022</p><div><a href="https://twitter.com/IamThatAndrew"><i class="fa fa-twitter"></i></a><a href="https://github.com/andrewmarmion"><i class="fa fa-github"></i></a><a href="https://linkedin.com/in/andrewmarmion"><i class="fa fa-linkedin"></i></a><a href="https://stackoverflow.com/users/5508175/andrew?tab=profile"><i class="fa fa-stack-overflow"></i></a><a href="https://youtube.com/c/andrewmarmion"><i class="fa fa-youtube"></i></a></div></footer></body></html>
