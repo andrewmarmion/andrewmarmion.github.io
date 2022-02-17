@@ -1,4 +1,125 @@
-<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Wed, 12 Jan 2022 09:59:23 +0000</lastBuildDate><pubDate>Wed, 12 Jan 2022 09:59:23 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Delete-Application-After-Test-Completion</guid><title>How to delete an application after a UI Test in Xcode</title><description>Deleting an app is as easy as just tapping a few buttons</description><link>https://andrewmarmion.com/posts/Delete-Application-After-Test-Completion</link><pubDate>Wed, 12 Jan 2022 09:34:00 +0000</pubDate><content:encoded><![CDATA[<p>Occasionally you will need to delete an application after a UI test, if you are running your tests as part of a CI/CD process this can be problematic to do, as you cannot manually go into simulator and delete the application between tests.</p><p>However it is possible to write a helper that will do just that.</p><p>The following code mimics a user long pressing on the app icon and then selecting the buttons in the system alerts to delete the application. It is not a quick process, because all told it could run for almost 11 seconds but I have found it useful in the case where I have needed to delete the application between UI tests.</p><br /><pre><code><span class="keyword">import</span> XCTest
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Andrew Marmion</title><description>Coding carefully, deliberately, and with humility.</description><link>https://andrewmarmion.com</link><language>en</language><lastBuildDate>Thu, 17 Feb 2022 12:00:34 +0000</lastBuildDate><pubDate>Thu, 17 Feb 2022 12:00:34 +0000</pubDate><ttl>250</ttl><atom:link href="https://andrewmarmion.com/feed.rss" rel="self" type="application/rss+xml"/><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Lottie%20in%20macOS</guid><title>Lottie in macOS</title><description>Using Lottie in an Popover on macOs</description><link>https://andrewmarmion.com/posts/Lottie%20in%20macOS</link><pubDate>Thu, 17 Feb 2022 12:04:00 +0000</pubDate><content:encoded><![CDATA[<p>I have always been interested in making my own macOS application, specifically applications that just run in the menu bar. So I thought I would give it a go and try and create a proof of concept and create a menu bar application that shows a Lottie animation.</p><p>For those that don't know what Lottie is, it is a way of displaying nice animations inside an application. I have previously used it in both UIKit and SwiftUI iOS applications but never inside a macOS app.</p><p>To start with, I opened Xcode and created a new SwiftUI macOS application. I then installed Lottie using SPM (Swift Package Manager) <code>https://github.com/airbnb/lottie-ios</code>.</p><p>Now that Lottie is installed. I needed to get an animation to show. I went to <a href="https://lottiefiles.com/">https://lottiefiles.com/</a> which has pre-made Lottie files. It is a great resource if you are looking for something that can add some flare to your project.</p><p>With my file chosen, I download the json file that contains the information that Lottie requires and added it to my project (making sure to check <em>Copy items if needed</em>). Quite often the filenames that you get from LottieFiles aren't the easiest to use/read, so I rename it to something more appropriate - <code>"animation.json"</code>.</p><p>Now that we have everything we need, we are ready to start.</p><h2>SwiftUI Views</h2><p>Firstly, Lottie is designed for UIKit or AppKit so to get it to work in <code>SwiftUI</code> you need to create a <code>UIViewRepresentable</code> or a <code>NSViewRepresentable</code>, respectively. These are used to wrap your <code>UIView</code> or <code>NSView</code> so that they can be used inside <code>SwiftUI</code>.</p><p>With a bit of work and trial and error this is what I came up with.</p><br /><pre><code><span class="keyword">struct</span> LottieView: <span class="type">NSViewRepresentable</span> {
+
+    <span class="keyword">let</span> animationView = <span class="type">AnimationView</span>()
+    <span class="keyword">var</span> filename: <span class="type">String</span>
+    <span class="keyword">var</span> speed: <span class="type">CGFloat</span>
+    <span class="keyword">var</span> loop: <span class="type">LottieLoopMode</span>
+
+    <span class="keyword">var</span> width: <span class="type">Double</span>
+    <span class="keyword">var</span> height: <span class="type">Double</span>
+
+    <span class="keyword">func</span> makeNSView(context: <span class="type">NSViewRepresentableContext</span>&lt;<span class="type">LottieView</span>&gt;) -&gt; <span class="type">NSView</span> {
+        <span class="keyword">let</span> view = <span class="type">NSView</span>()
+        <span class="keyword">let</span> animation = <span class="type">Animation</span>.<span class="call">named</span>(filename)
+        animationView.<span class="property">animation</span> = animation
+        animationView.<span class="property">animationSpeed</span> = speed
+        animationView.<span class="property">contentMode</span> = .<span class="dotAccess">scaleAspectFit</span>
+        animationView.<span class="property">loopMode</span> = loop
+        animationView.<span class="call">play</span>()
+        animationView.<span class="property">translatesAutoresizingMaskIntoConstraints</span> = <span class="keyword">false</span>
+        view.<span class="call">addSubview</span>(animationView)
+
+        <span class="type">NSLayoutConstraint</span>.<span class="call">activate</span>([
+            animationView.<span class="property">centerXAnchor</span>.<span class="call">constraint</span>(equalTo: view.<span class="property">centerXAnchor</span>),
+            animationView.<span class="property">centerYAnchor</span>.<span class="call">constraint</span>(equalTo: view.<span class="property">centerYAnchor</span>),
+            animationView.<span class="property">heightAnchor</span>.<span class="call">constraint</span>(equalToConstant: height),
+            animationView.<span class="property">widthAnchor</span>.<span class="call">constraint</span>(equalToConstant: width)
+        ])
+
+        <span class="keyword">return</span> view
+
+    }
+
+    <span class="keyword">func</span> updateNSView(<span class="keyword">_</span> uiView: <span class="type">NSView</span>, context: <span class="type">NSViewRepresentableContext</span>&lt;<span class="type">LottieView</span>&gt; ) {
+
+    }
+}
+</code></pre><br /><p>However something that I found was that if I didn't put an addtional frame on the <code>LottieView</code> then it would take up all the available space, even though the animation was correctly sized.</p><p>This lead me to creating a <code>SizedLottieView</code>, that wraps the <code>LottieView</code> and sets the frame, this just makes it easier at the call site.</p><br /><pre><code><span class="keyword">struct</span> SizedLottieView: <span class="type">View</span> {
+    <span class="keyword">var</span> filename : <span class="type">String</span>
+    <span class="keyword">var</span> speed: <span class="type">CGFloat</span>
+    <span class="keyword">var</span> loop: <span class="type">LottieLoopMode</span>
+
+    <span class="keyword">var</span> width: <span class="type">Double</span>
+    <span class="keyword">var</span> height: <span class="type">Double</span>
+
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">LottieView</span>(filename: filename, speed: speed, loop: .<span class="dotAccess">loop</span>, width: width, height: height)
+            .<span class="call">frame</span>(width: width, height: height)
+        <span class="comment">// Without fixing the frame here, it causes the LottieView to take up the available space.</span>
+    }
+}
+</code></pre><br /><p>Now my <code>SizedLottieView</code> is ready to be used, I can design my popover menu.</p><br /><pre><code><span class="keyword">struct</span> MenuView: <span class="type">View</span> {
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">View</span> {
+        <span class="type">VStack</span>(spacing: <span class="number">10</span>) {
+            <span class="type">SizedLottieView</span>(filename: <span class="string">"animation"</span>, speed: <span class="number">1.0</span>, loop: .<span class="dotAccess">loop</span>, width: <span class="number">100</span>, height: <span class="number">100</span>)
+            <span class="comment">// Note we don't include the file extension, just the filename</span>
+            <span class="type">Text</span>(<span class="string">"Lottie being used in a popover"</span>)
+                .<span class="call">padding</span>()
+        }
+        .<span class="call">frame</span>(width: <span class="number">400</span>, height: <span class="number">350</span>) <span class="comment">// This sets the width/height of the PopOver menu</span>
+    }
+}
+</code></pre><br /><p>There is nothing special about <code>MenuView</code> it is just a <code>SwiftUI</code> view that contains what could be in the popover. As this is a POC, I am just going to keep it simple.</p><h2>Creating the PopOver</h2><p>Now we have the <code>SwiftUI</code> views ready we can begin the work of showing the popover. This is done inside the AppDelegate. To make this happen we need to create an AppDelegate and then inject it into our main app.</p><br /><pre><code><span class="keyword">class</span> AppDelegate: <span class="type">NSObject</span>, <span class="type">NSApplicationDelegate</span> { }
+
+
+<span class="keyword">@main
+struct</span> MyMacOSApp: <span class="type">App</span> {
+
+    <span class="keyword">@NSApplicationDelegateAdaptor</span>(<span class="type">AppDelegate</span>.<span class="keyword">self</span>) <span class="keyword">var</span> delegate
+    
+    <span class="keyword">var</span> body: <span class="keyword">some</span> <span class="type">Scene</span> {
+        <span class="type">WindowGroup</span> {
+            <span class="type">ContentView</span>()
+        }
+    }
+}
+</code></pre><br /><p>Now that the <code>AppDelegate</code> is injected into our application we can update it so that it create and show our popover menu.</p><br /><pre><code><span class="keyword">class</span> AppDelegate: <span class="type">NSObject</span>, <span class="type">NSApplicationDelegate</span> {
+
+    <span class="comment">// We need this here so we can access it in openMenu so that we can position the popover correctly</span>
+    <span class="keyword">var</span> statusItem: <span class="type">NSStatusItem</span>?
+
+    <span class="keyword">func</span> applicationDidFinishLaunching(<span class="keyword">_</span> notification: <span class="type">Notification</span>) {
+        statusItem = <span class="type">NSStatusBar</span>.<span class="property">system</span>.<span class="call">statusItem</span>(withLength: <span class="type">NSStatusItem</span>.<span class="property">variableLength</span>)
+        statusItem?.<span class="property">button</span>?.<span class="property">image</span> = <span class="type">NSImage</span>(systemSymbolName: <span class="string">"person.fill"</span>, accessibilityDescription: <span class="string">""</span>)
+        statusItem?.<span class="property">button</span>?.<span class="property">target</span> = <span class="keyword">self</span>
+        statusItem?.<span class="property">button</span>?.<span class="property">action</span> = <span class="keyword">#selector</span>(openMenu)
+    }
+
+    <span class="keyword">@objc func</span> openMenu() {
+        <span class="keyword">guard let</span> menuButton = statusItem?.<span class="property">button</span> <span class="keyword">else</span> { <span class="keyword">return</span> }
+        <span class="keyword">let</span> popOver = <span class="type">NSPopover</span>()
+        popOver.<span class="property">behavior</span> = .<span class="dotAccess">transient</span>
+        popOver.<span class="property">contentViewController</span> = <span class="type">NSViewController</span>()
+        popOver.<span class="property">contentViewController</span>?.<span class="property">view</span> = <span class="type">NSHostingView</span>(rootView: <span class="type">MenuView</span>())
+        popOver.<span class="call">show</span>(relativeTo: menuButton.<span class="property">bounds</span>, of: menuButton, preferredEdge: .<span class="dotAccess">minY</span>)
+    }
+}
+</code></pre><br /><p>This works, to a fashion. It is not quite correct. Something inside the <code>MenuView</code> is causing a problem with displaying the popover. It appears half off the screen. If we go to the <code>MenuView</code> and replace the <code>SizedLottieView</code> with something else we can see that the popover works as expected so something inside the <code>LottieView</code> is causing a problem with the popover and not allowing it to display correctly.</p><p>After playing around with the <code>LottieView</code> and trying to get it to work. I came to the conclusion that there is something not working with adding the <code>MenuView</code> as the view of the <code>contentViewController</code> when it is inside the a <code>NSHostingView</code>.</p><p>I decided to try wrapping the <code>LottieView</code> inside an <code>NSViewController</code>, and came up with the following:</p><br /><pre><code><span class="keyword">class</span> MenuViewController: <span class="type">NSViewController</span> {
+
+    <span class="comment">// We could create a custom init to pass anything that the MenuView requires</span>
+
+    <span class="keyword">override func</span> loadView() {
+        view = <span class="type">NSView</span>()
+
+        <span class="keyword">let</span> menuView = <span class="type">MenuView</span>()
+        <span class="keyword">let</span> hostingView = <span class="type">NSHostingView</span>(rootView: menuView)
+        hostingView.<span class="property">translatesAutoresizingMaskIntoConstraints</span> = <span class="keyword">false</span>
+        view.<span class="call">addSubview</span>(hostingView)
+
+        <span class="type">NSLayoutConstraint</span>.<span class="call">activate</span>([
+            hostingView.<span class="property">widthAnchor</span>.<span class="call">constraint</span>(equalTo: view.<span class="property">widthAnchor</span>),
+            hostingView.<span class="property">heightAnchor</span>.<span class="call">constraint</span>(equalTo: view.<span class="property">heightAnchor</span>),
+        ])
+    }
+}
+</code></pre><br /><p>And in the <code>AppDelegate</code> we replace the <code>openMenu</code> function with the following:</p><br /><pre><code><span class="keyword">@objc func</span> openMenu() {
+    <span class="keyword">guard let</span> menuButton = statusItem?.<span class="property">button</span> <span class="keyword">else</span> { <span class="keyword">return</span> }
+    <span class="keyword">let</span> popOver = <span class="type">NSPopover</span>()
+    popOver.<span class="property">behavior</span> = .<span class="dotAccess">transient</span>
+    popOver.<span class="property">contentViewController</span> = <span class="type">MenuViewController</span>() <span class="comment">// Note we just set the view controller here</span>
+    popOver.<span class="call">show</span>(relativeTo: menuButton.<span class="property">bounds</span>, of: menuButton, preferredEdge: .<span class="dotAccess">minY</span>)
+}
+</code></pre><br /><p>Now the popover menu is displaying as expected. 🥳</p>]]></content:encoded></item><item><guid isPermaLink="true">https://andrewmarmion.com/posts/Delete-Application-After-Test-Completion</guid><title>How to delete an application after a UI Test in Xcode</title><description>Deleting an app is as easy as just tapping a few buttons</description><link>https://andrewmarmion.com/posts/Delete-Application-After-Test-Completion</link><pubDate>Wed, 12 Jan 2022 09:34:00 +0000</pubDate><content:encoded><![CDATA[<p>Occasionally you will need to delete an application after a UI test, if you are running your tests as part of a CI/CD process this can be problematic to do, as you cannot manually go into simulator and delete the application between tests.</p><p>However it is possible to write a helper that will do just that.</p><p>The following code mimics a user long pressing on the app icon and then selecting the buttons in the system alerts to delete the application. It is not a quick process, because all told it could run for almost 11 seconds but I have found it useful in the case where I have needed to delete the application between UI tests.</p><br /><pre><code><span class="keyword">import</span> XCTest
 
 <span class="keyword">public class</span> Springboard {
     <span class="keyword">private static let</span> springboard = <span class="type">XCUIApplication</span>(bundleIdentifier: <span class="string">"com.apple.springboard"</span>)
